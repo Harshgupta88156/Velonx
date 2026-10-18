@@ -1,13 +1,5 @@
 "use client";
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ReactNode,
-  type FormEvent,
-} from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import {
   Activity,
@@ -23,13 +15,11 @@ import {
   ChevronRight,
   ClipboardList,
   Clock3,
-  Download,
   FlaskConical,
   HeartPulse,
   LayoutDashboard,
   LoaderCircle,
   Menu,
-  MoreHorizontal,
   Pill,
   RefreshCw,
   Search,
@@ -41,64 +31,22 @@ import {
   Users,
   X,
   AlertTriangle,
-  MapPin,
-  Plus,
 } from "lucide-react";
-import {
-  Area,
-  AreaChart,
-  CartesianGrid,
-  ComposedChart,
-  Line,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
-import type {
-  AuditEvent,
-  Diagnostic,
-  Facility,
-  Forecast,
-  Intelligence,
-  Inventory,
-  InventoryInsight,
-  Locale,
-  Recommendation,
-  Role,
-  Snapshot,
-} from "@/lib/types";
+import type { Facility, Locale, Recommendation, Role } from "@/lib/types";
 import type { MessageKey } from "@/messages";
 import { PRODUCT_NAME } from "@/lib/branding";
-import type { QualityReport } from "@/lib/data-quality";
 import DataStandards from "./data-standards";
 import Interventions from "./interventions";
-import ShapPanel from "./shap-panel";
 import PlanningPanel from "./planning-panel";
-import type { Intervention } from "@/lib/db";
-type View =
-  | "command"
-  | "facilities"
-  | "inventory"
-  | "flow"
-  | "beds"
-  | "doctors"
-  | "diagnostics"
-  | "transfers"
-  | "activity"
-  | "planning"
-  | "quality";
-type Data = {
-  snapshot: Snapshot;
-  intelligence: Intelligence;
-  quality: QualityReport;
-  interventions: Intervention[];
-  demoMode: boolean;
-};
-type Editor =
-  | { kind: "inventory"; record: Inventory }
-  | { kind: "beds" | "doctors" | "flow"; facility: Facility }
-  | { kind: "diagnostics"; record: Diagnostic };
+import ActivityLog from "./activity-log";
+import { Badge, Empty, Stat } from "./ui/primitives";
+import { Modal } from "./ui/modal";
+import { forecastMethod, DemandChart } from "./ui/charts";
+import { FacilityMap } from "./facility-map";
+import { RecordForm } from "./record-form";
+import { MedicineEvidence } from "./medicine-evidence";
+import type { Data, Editor, View } from "./view-types";
+import { percent } from "@/lib/format";
 const navigation: { id: View; icon: typeof Activity }[] = [
   { id: "command", icon: LayoutDashboard },
   { id: "facilities", icon: Building2 },
@@ -112,114 +60,6 @@ const navigation: { id: View; icon: typeof Activity }[] = [
   { id: "planning", icon: Target },
   { id: "quality", icon: ShieldCheck },
 ];
-const round = (n: number) => Math.round(n * 10) / 10;
-const percent = (part: number, total: number) =>
-  total ? Math.round((part / total) * 100) : 0;
-function Badge({ kind, children }: { kind: string; children: ReactNode }) {
-  return (
-    <span className={`badge ${kind}`}>
-      <i />
-      {children}
-    </span>
-  );
-}
-function Empty({ children }: { children: ReactNode }) {
-  return (
-    <div className="empty">
-      <CheckCircle2 size={23} />
-      <p>{children}</p>
-    </div>
-  );
-}
-function Modal({
-  title,
-  subtitle,
-  onClose,
-  children,
-  wide = false,
-  languageControl,
-}: {
-  title: string;
-  subtitle?: string;
-  onClose: () => void;
-  children: ReactNode;
-  wide?: boolean;
-  languageControl?: ReactNode;
-}) {
-  const ref = useRef<HTMLDivElement>(null);
-  const closeRef = useRef(onClose);
-  closeRef.current = onClose;
-  const t = useTranslations();
-  useEffect(() => {
-    const before = document.activeElement as HTMLElement;
-    const root = ref.current;
-    root?.focus();
-    const key = (event: KeyboardEvent) => {
-      if (event.key === "Escape") closeRef.current();
-      if (event.key === "Tab" && root) {
-        const items = Array.from(
-          root.querySelectorAll<HTMLElement>(
-            'button:not(:disabled),input,select,textarea,[tabindex="0"]',
-          ),
-        );
-        const first = items[0],
-          last = items.at(-1);
-        if (
-          event.shiftKey &&
-          (document.activeElement === first || document.activeElement === root)
-        ) {
-          event.preventDefault();
-          last?.focus();
-        } else if (!event.shiftKey && document.activeElement === last) {
-          event.preventDefault();
-          first?.focus();
-        }
-      }
-    };
-    document.addEventListener("keydown", key);
-    const old = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.removeEventListener("keydown", key);
-      document.body.style.overflow = old;
-      before?.focus();
-    };
-  }, []);
-  return (
-    <div
-      className="modal-shade"
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-    >
-      <div
-        className={`drawer ${wide ? "wide" : ""}`}
-        role="dialog"
-        aria-modal="true"
-        aria-label={title}
-        tabIndex={-1}
-        ref={ref}
-      >
-        <div className="drawer-head">
-          <div>
-            <span className="eyebrow">DISTRICTCARE / {t("hourly")}</span>
-            <h2>{title}</h2>
-            {subtitle && <p>{subtitle}</p>}
-          </div>
-          {languageControl}
-          <button
-            className="icon-button"
-            onClick={onClose}
-            aria-label={t("close")}
-          >
-            <X size={20} />
-          </button>
-        </div>
-        {children}
-      </div>
-    </div>
-  );
-}
 export default function CommandCentre({
   locale,
   setLocale,
@@ -442,38 +282,6 @@ export default function CommandCentre({
                         : "dataGap";
     return `${tr(key)}${value !== undefined ? ` · ${code === "bed-pressure" || code === "patient-load" ? `${Math.round(value * 100)}%` : fmt(value)}` : ""}`;
   };
-  const eventLabel = (action: string) => {
-    const key: MessageKey =
-      action === "transfer.approved"
-        ? "approved"
-        : action === "transfer.dispatched"
-          ? "dispatched"
-          : action === "transfer.received"
-            ? "received"
-            : action === "transfer.cancelled"
-              ? "cancelled"
-              : action === "inventory.adjusted"
-                ? "updateStock"
-                : action === "inventory.quarantined"
-                  ? "quarantine"
-                  : "update";
-    return tr(key);
-  };
-  const eventDetail = (event: AuditEvent) => {
-    try {
-      const detail = JSON.parse(event.detail) as Record<string, unknown>;
-      if (detail.donor && detail.recipient)
-        return `${facilityName(String(detail.donor))} → ${facilityName(String(detail.recipient))} · ${medicineName(String(detail.medicine))} · ${fmt(Number(detail.quantity))} ${tr("units")}`;
-      if (detail.before !== undefined && detail.after !== undefined)
-        return `${tr("quantity")}: ${String(detail.before)} → ${String(detail.after)} · ${String(detail.reason ?? "")}`;
-      if (detail.facilityId) return facilityName(String(detail.facilityId));
-      if (detail.quantity !== undefined)
-        return `${tr("quantity")}: ${String(detail.quantity)}`;
-      return tr("success");
-    } catch {
-      return event.detail;
-    }
-  };
   const selectedFacility = snap?.facilities.find((f) => f.id === selected);
   const evidenceRecord = snap?.inventory.find((i) => i.id === evidenceId);
   const recipientRecord = recommendation
@@ -514,7 +322,12 @@ export default function CommandCentre({
   const subtitle: MessageKey =
     view === "command" ? "overviewSub" : (`${view}Sub` as MessageKey);
   const renderFacilities = () => (
-    <div className="table-scroll">
+    <div
+      className="table-scroll"
+      tabIndex={0}
+      role="region"
+      aria-label={tr("tableRegion")}
+    >
       <table>
         <thead>
           <tr>
@@ -524,7 +337,9 @@ export default function CommandCentre({
             <th>{tr("occupancy")}</th>
             <th>{tr("doctorsPresent")}</th>
             <th>{tr("readiness")}</th>
-            <th />
+            <th>
+              <span className="sr-only">{tr("actions")}</span>
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -702,14 +517,7 @@ export default function CommandCentre({
   return (
     <div className="app-shell">
       <aside className={`sidebar ${mobile ? "mobile-open" : ""}`}>
-        <a
-          className="brand"
-          href="#"
-          onClick={(e) => {
-            e.preventDefault();
-            go("command");
-          }}
-        >
+        <button type="button" className="brand" onClick={() => go("command")}>
           <span className="brand-mark">
             <HeartPulse size={25} strokeWidth={2.5} />
           </span>
@@ -717,7 +525,7 @@ export default function CommandCentre({
             {PRODUCT_NAME}
             <small>{tr("brand")}</small>
           </span>
-        </a>
+        </button>
         <div className="district-card">
           <span className="district-emblem">
             <Building2 size={18} />
@@ -1220,7 +1028,12 @@ export default function CommandCentre({
                     </span>
                   </div>
                   <section className="panel">
-                    <div className="table-scroll">
+                    <div
+                      className="table-scroll"
+                      tabIndex={0}
+                      role="region"
+                      aria-label={tr("tableRegion")}
+                    >
                       <table>
                         <thead>
                           <tr>
@@ -1231,7 +1044,9 @@ export default function CommandCentre({
                             <th>{tr("cover")}</th>
                             <th>{tr("expiry")}</th>
                             <th>{tr("risk")}</th>
-                            <th />
+                            <th>
+                              <span className="sr-only">{tr("actions")}</span>
+                            </th>
                           </tr>
                         </thead>
                         <tbody>
@@ -1331,7 +1146,12 @@ export default function CommandCentre({
                     <div className="panel-heading">
                       <h2>{tr("patientCount")}</h2>
                     </div>
-                    <div className="table-scroll">
+                    <div
+                      className="table-scroll"
+                      tabIndex={0}
+                      role="region"
+                      aria-label={tr("tableRegion")}
+                    >
                       <table>
                         <thead>
                           <tr>
@@ -1339,7 +1159,9 @@ export default function CommandCentre({
                             <th>{tr("patients")}</th>
                             <th>{tr("dailyCapacity")}</th>
                             <th>{tr("serviceCapacity")}</th>
-                            <th />
+                            <th>
+                              <span className="sr-only">{tr("actions")}</span>
+                            </th>
                           </tr>
                         </thead>
                         <tbody>
@@ -1389,7 +1211,12 @@ export default function CommandCentre({
                       {filtered.length} {tr("rows")}
                     </span>
                   </div>
-                  <div className="table-scroll">
+                  <div
+                    className="table-scroll"
+                    tabIndex={0}
+                    role="region"
+                    aria-label={tr("tableRegion")}
+                  >
                     <table>
                       <thead>
                         <tr>
@@ -1409,7 +1236,9 @@ export default function CommandCentre({
                             </>
                           )}
                           <th>{tr("latest")}</th>
-                          <th />
+                          <th>
+                            <span className="sr-only">{tr("actions")}</span>
+                          </th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1488,7 +1317,12 @@ export default function CommandCentre({
               )}
               {view === "diagnostics" && (
                 <section className="panel">
-                  <div className="table-scroll">
+                  <div
+                    className="table-scroll"
+                    tabIndex={0}
+                    role="region"
+                    aria-label={tr("tableRegion")}
+                  >
                     <table>
                       <thead>
                         <tr>
@@ -1498,7 +1332,9 @@ export default function CommandCentre({
                           <th>{tr("reagents")}</th>
                           <th>{tr("downtime")}</th>
                           <th>{tr("latest")}</th>
-                          <th />
+                          <th>
+                            <span className="sr-only">{tr("actions")}</span>
+                          </th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1612,7 +1448,12 @@ export default function CommandCentre({
                     <div className="panel-heading">
                       <h2>{tr("transfers")}</h2>
                     </div>
-                    <div className="table-scroll">
+                    <div
+                      className="table-scroll"
+                      tabIndex={0}
+                      role="region"
+                      aria-label={tr("tableRegion")}
+                    >
                       <table>
                         <thead>
                           <tr>
@@ -1622,7 +1463,9 @@ export default function CommandCentre({
                             <th>{tr("quantity")}</th>
                             <th>{tr("status")}</th>
                             <th>{tr("created")}</th>
-                            <th />
+                            <th>
+                              <span className="sr-only">{tr("actions")}</span>
+                            </th>
                           </tr>
                         </thead>
                         <tbody>
@@ -1714,37 +1557,14 @@ export default function CommandCentre({
                 </>
               )}
               {view === "activity" && (
-                <section className="panel">
-                  <div className="panel-heading">
-                    <h2>{tr("activity")}</h2>
-                    <span className="small-tag">{snap?.audit.length}</span>
-                  </div>
-                  <div className="activity-list">
-                    {snap?.audit.map((event) => (
-                      <article key={event.id}>
-                        <span className="audit-icon">
-                          <ClipboardList size={18} />
-                        </span>
-                        <div>
-                          <strong>{eventLabel(event.action)}</strong>
-                          <p>{eventDetail(event)}</p>
-                          <small>
-                            {tr(
-                              event.actor === "inventory"
-                                ? "inventoryRole"
-                                : event.actor === "officer"
-                                  ? "officer"
-                                  : "administrator",
-                            )}{" "}
-                            · {event.entityId}
-                          </small>
-                        </div>
-                        <time>{date(event.at, true)}</time>
-                      </article>
-                    ))}
-                    {!snap?.audit.length && <Empty>{tr("noActivity")}</Empty>}
-                  </div>
-                </section>
+                <ActivityLog
+                  audit={snap?.audit ?? []}
+                  tr={tr}
+                  date={date}
+                  fmt={fmt}
+                  facilityName={facilityName}
+                  medicineName={medicineName}
+                />
               )}
               {view === "planning" && snap && (
                 <>
@@ -2166,605 +1986,5 @@ export default function CommandCentre({
         </Modal>
       )}
     </div>
-  );
-}
-function Stat({
-  icon,
-  label,
-  value,
-  detail,
-  color,
-}: {
-  icon: ReactNode;
-  label: string;
-  value: string;
-  detail: string;
-  color: string;
-}) {
-  return (
-    <article className="stat-card">
-      <div className="stat-top">
-        <span>{label}</span>
-        <span className={`stat-icon ${color}`}>{icon}</span>
-      </div>
-      <strong className="stat-value">{value}</strong>
-      <div className="stat-detail">
-        <span className={`mini-dot ${color}`} />
-        {detail}
-      </div>
-    </article>
-  );
-}
-function forecastMethod(
-  f: Forecast | undefined,
-  tr: (key: MessageKey) => string,
-) {
-  return tr(
-    f?.method === "seasonal-naive"
-      ? "seasonalNaive"
-      : f?.method === "moving-average"
-        ? "movingAverage"
-        : f?.method === "exponential-smoothing"
-          ? "exponentialSmoothing"
-          : f?.method === "ridge-regression"
-            ? "ridgeRegression"
-            : "insufficientData",
-  );
-}
-function DemandChart({
-  history,
-  forecast,
-  locale,
-  actualLabel,
-  forecastLabel,
-  rangeLabel,
-}: {
-  history: { date: string; value: number }[];
-  forecast: Forecast | undefined;
-  locale: Locale;
-  actualLabel: string;
-  forecastLabel: string;
-  rangeLabel: string;
-}) {
-  const points = history.slice(-14).map((p) => ({
-    date: p.date,
-    actual: p.value,
-    forecast: undefined as number | undefined,
-    band: undefined as [number, number] | undefined,
-  }));
-  if (points.length && forecast?.points.length)
-    points[points.length - 1].forecast = points[points.length - 1].actual;
-  const rows = [
-    ...points,
-    ...(forecast?.points ?? []).map((p) => ({
-      date: p.date,
-      actual: undefined as number | undefined,
-      forecast: p.value,
-      band:
-        p.lower === null || p.upper === null
-          ? undefined
-          : ([p.lower, p.upper] as [number, number]),
-    })),
-  ];
-  return (
-    <div className="demand-chart">
-      <ResponsiveContainer width="100%" height={230}>
-        <ComposedChart
-          data={rows}
-          margin={{ left: -24, right: 12, top: 10, bottom: 0 }}
-        >
-          <defs>
-            <linearGradient id="forecastBand" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#6c91c4" stopOpacity={0.16} />
-              <stop offset="100%" stopColor="#6c91c4" stopOpacity={0.04} />
-            </linearGradient>
-            <linearGradient id="actualFill" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#168f79" stopOpacity={0.12} />
-              <stop offset="100%" stopColor="#168f79" stopOpacity={0} />
-            </linearGradient>
-          </defs>
-          <CartesianGrid
-            vertical={false}
-            stroke="#edf0f0"
-            strokeDasharray="3 4"
-          />
-          <XAxis
-            dataKey="date"
-            tickLine={false}
-            axisLine={false}
-            minTickGap={28}
-            tick={{ fill: "#8a939c", fontSize: 10 }}
-            tickFormatter={(v) =>
-              new Intl.DateTimeFormat(locale, {
-                month: "short",
-                day: "numeric",
-              }).format(new Date(v))
-            }
-          />
-          <YAxis
-            tickLine={false}
-            axisLine={false}
-            tick={{ fill: "#8a939c", fontSize: 10 }}
-          />
-          <Tooltip
-            contentStyle={{
-              border: "1px solid #e7ebea",
-              borderRadius: 9,
-              fontSize: 12,
-            }}
-            labelFormatter={(v) => String(v)}
-            formatter={(value, name) =>
-              name === "band"
-                ? [
-                    Array.isArray(value) ? `${value[0]}–${value[1]}` : value,
-                    rangeLabel,
-                  ]
-                : [value, name === "actual" ? actualLabel : forecastLabel]
-            }
-          />
-          <Area
-            type="monotone"
-            dataKey="band"
-            fill="url(#forecastBand)"
-            stroke="none"
-          />
-          <Area
-            type="monotone"
-            dataKey="actual"
-            fill="url(#actualFill)"
-            stroke="#168f79"
-            strokeWidth={2.5}
-            dot={false}
-          />
-          <Line
-            type="monotone"
-            dataKey="forecast"
-            stroke="#7699c4"
-            strokeWidth={2.5}
-            strokeDasharray="5 4"
-            dot={false}
-          />
-        </ComposedChart>
-      </ResponsiveContainer>
-    </div>
-  );
-}
-function FacilityMap({
-  facilities,
-  risks,
-  onSelect,
-  facilityLabel,
-}: {
-  facilities: Facility[];
-  risks: Map<string, { level: string }>;
-  onSelect: (id: string) => void;
-  facilityLabel: string;
-}) {
-  const allLat = facilities.map((f) => f.lat),
-    allLng = facilities.map((f) => f.lng);
-  const minLat = Math.min(...allLat),
-    maxLat = Math.max(...allLat),
-    minLng = Math.min(...allLng),
-    maxLng = Math.max(...allLng);
-  return (
-    <div className="facility-map">
-      <svg viewBox="0 0 660 340" role="img" aria-label={facilityLabel}>
-        <defs>
-          <pattern
-            id="mapGrid"
-            width="22"
-            height="22"
-            patternUnits="userSpaceOnUse"
-          >
-            <circle cx="1" cy="1" r=".7" fill="#cfdad2" />
-          </pattern>
-          <linearGradient id="mapFill">
-            <stop stopColor="#eaf0e5" />
-            <stop offset="1" stopColor="#f0f2e9" />
-          </linearGradient>
-        </defs>
-        <rect width="660" height="340" fill="#f7f8f1" />
-        <rect width="660" height="340" fill="url(#mapGrid)" />
-        <path
-          d="M153 28L233 38 269 20 331 48 390 37 426 67 503 54 530 100 580 131 553 185 579 237 525 256 492 303 426 287 370 317 310 296 258 317 213 285 151 291 122 247 80 221 113 175 84 131 125 102Z"
-          fill="url(#mapFill)"
-          stroke="#cdd8ca"
-          strokeWidth="1.5"
-        />
-        <path
-          d="M115 181C198 131 227 224 322 181S450 106 553 185M233 38Q240 142 322 181T370 317M125 102Q246 108 322 181T492 303M122 247Q249 198 322 181T503 54"
-          fill="none"
-          stroke="#d3dccb"
-          strokeDasharray="4 5"
-        />
-        <path
-          d="M20 271Q96 258 150 225T294 217 402 197 489 217 655 145"
-          stroke="#c9dfe3"
-          strokeWidth="7"
-          fill="none"
-          opacity=".7"
-        />
-        <path
-          d="M119 274Q213 263 267 185T370 113 578 84"
-          stroke="white"
-          strokeWidth="5"
-          fill="none"
-        />
-        <path
-          d="M119 274Q213 263 267 185T370 113 578 84"
-          stroke="#dedfd2"
-          strokeWidth="1"
-          fill="none"
-        />
-        <text
-          x="332"
-          y="172"
-          textAnchor="middle"
-          fill="#a0ad9b"
-          fontSize="11"
-          letterSpacing="4"
-        >
-          SEHORE
-        </text>
-        {facilities.map((f, index) => {
-          const x = 150 + ((f.lng - minLng) / (maxLng - minLng || 1)) * 355;
-          const y = 65 + ((maxLat - f.lat) / (maxLat - minLat || 1)) * 210;
-          const level = risks.get(f.id)?.level ?? "stable";
-          const color =
-            level === "critical"
-              ? "#d26553"
-              : level === "watch"
-                ? "#d7a34f"
-                : "#188d78";
-          return (
-            <g
-              key={f.id}
-              role="button"
-              tabIndex={0}
-              aria-label={`${f.name}, ${level}`}
-              className="map-pin"
-              onClick={() => onSelect(f.id)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  onSelect(f.id);
-                }
-              }}
-            >
-              <title>{f.name}</title>
-              <circle cx={x} cy={y} r="14" fill={color} opacity=".10" />
-              <circle
-                cx={x}
-                cy={y}
-                r={f.type === "CHC" ? 7 : 5.5}
-                fill={color}
-                stroke="white"
-                strokeWidth="2.5"
-              />
-              {(facilities.length < 9 || index % 2 === 0) && (
-                <text x={x + 11} y={y + 4} fontSize="9" fill="#58655c">
-                  {f.name.replace(/^(PHC|CHC)\s*/, "")}
-                </text>
-              )}
-            </g>
-          );
-        })}
-        <g transform="translate(615,25)">
-          <text x="0" y="0" fill="#98a596" fontSize="9" textAnchor="middle">
-            N
-          </text>
-          <path d="M0 6L-4 18 0 15 4 18Z" fill="#899a87" />
-        </g>
-        <g transform="translate(28,308)">
-          <path d="M0 0V5H70V0M35 5V0" fill="none" stroke="#9eac9b" />
-          <text x="0" y="18" fill="#98a596" fontSize="8">
-            SCHEMATIC / NOT TO SCALE
-          </text>
-        </g>
-      </svg>
-    </div>
-  );
-}
-function RecordForm({
-  editor,
-  busy,
-  error,
-  tr,
-  onCancel,
-  onSubmit,
-}: {
-  editor: Editor;
-  busy: boolean;
-  error: string;
-  tr: (key: MessageKey) => string;
-  onCancel: () => void;
-  onSubmit: (body: Record<string, unknown>) => Promise<void>;
-}) {
-  const [localError, setLocalError] = useState("");
-  async function submit(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setLocalError("");
-    const form = new FormData(e.currentTarget);
-    const number = (key: string) => Number(form.get(key));
-    const integer = (n: number) => Number.isInteger(n) && n >= 0;
-    let body: Record<string, unknown> = {};
-    if (editor.kind === "inventory") {
-      const quantity = number("quantity");
-      const reason = String(form.get("reason") ?? "").trim();
-      if (
-        !integer(quantity) ||
-        quantity < editor.record.reserved ||
-        reason.length < 5
-      ) {
-        setLocalError(tr("validationError"));
-        return;
-      }
-      body = { quantity, version: editor.record.version, reason };
-    } else if (editor.kind === "beds") {
-      const beds = number("beds"),
-        occupied = number("occupied");
-      if (!integer(beds) || !integer(occupied) || occupied > beds) {
-        setLocalError(tr("bedHelp"));
-        return;
-      }
-      body = { facilityId: editor.facility.id, beds, occupied };
-    } else if (editor.kind === "doctors") {
-      const presentDoctors = number("presentDoctors");
-      if (
-        !integer(presentDoctors) ||
-        presentDoctors > editor.facility.scheduledDoctors
-      ) {
-        setLocalError(tr("doctorHelp"));
-        return;
-      }
-      body = {
-        facilityId: editor.facility.id,
-        presentDoctors,
-        attendanceRecorded: form.get("attendanceRecorded") === "on",
-      };
-    } else if (editor.kind === "flow") {
-      const patientsToday = number("patientsToday");
-      if (!integer(patientsToday)) {
-        setLocalError(tr("validationError"));
-        return;
-      }
-      body = { facilityId: editor.facility.id, patientsToday };
-    } else if (editor.kind === "diagnostics") {
-      body = {
-        facilityId: editor.record.facilityId,
-        diagnosticId: editor.record.id,
-        equipment: form.get("equipment"),
-        reagents: form.get("reagents") === "on",
-      };
-    }
-    await onSubmit(body);
-  }
-  return (
-    <form className="drawer-body record-form" onSubmit={submit}>
-      <p className="form-intro">
-        {tr(editor.kind === "inventory" ? "stockHelp" : "operationsHelp")}
-      </p>
-      {editor.kind === "inventory" && (
-        <>
-          <label>
-            {tr("quantityLabel")}
-            <input
-              name="quantity"
-              type="number"
-              min={editor.record.reserved}
-              max={10000000}
-              step="1"
-              defaultValue={editor.record.quantity}
-              required
-            />
-          </label>
-          <span className="form-hint">
-            {tr("reserved")}: {editor.record.reserved} · {tr("version")}:{" "}
-            {editor.record.version}
-          </span>
-          <label>
-            {tr("reasonLabel")}
-            <textarea
-              name="reason"
-              minLength={5}
-              maxLength={400}
-              rows={3}
-              required
-            />
-          </label>
-        </>
-      )}
-      {editor.kind === "beds" && (
-        <>
-          <label>
-            {tr("bedsTotal")}
-            <input
-              name="beds"
-              type="number"
-              min="0"
-              max="10000"
-              step="1"
-              defaultValue={editor.facility.beds}
-              required
-            />
-          </label>
-          <label>
-            {tr("occupied")}
-            <input
-              name="occupied"
-              type="number"
-              min="0"
-              max="10000"
-              step="1"
-              defaultValue={editor.facility.occupied}
-              required
-            />
-          </label>
-          <span className="form-hint">{tr("bedHelp")}</span>
-        </>
-      )}
-      {editor.kind === "doctors" && (
-        <>
-          <div className="drawer-note">
-            {tr("scheduled")}: {editor.facility.scheduledDoctors}
-          </div>
-          <label>
-            {tr("present")}
-            <input
-              name="presentDoctors"
-              type="number"
-              min="0"
-              max={editor.facility.scheduledDoctors}
-              step="1"
-              defaultValue={editor.facility.presentDoctors}
-              required
-            />
-          </label>
-          <label className="checkbox-label">
-            <input
-              name="attendanceRecorded"
-              type="checkbox"
-              defaultChecked={editor.facility.attendanceRecorded}
-            />
-            {tr("attendance")}
-          </label>
-        </>
-      )}
-      {editor.kind === "flow" && (
-        <label>
-          {tr("patientCount")}
-          <input
-            name="patientsToday"
-            type="number"
-            min="0"
-            max="100000"
-            step="1"
-            defaultValue={editor.facility.patientsToday}
-            required
-          />
-        </label>
-      )}
-      {editor.kind === "diagnostics" && (
-        <>
-          <label>
-            {tr("equipment")}
-            <select name="equipment" defaultValue={editor.record.equipment}>
-              <option value="operational">{tr("operational")}</option>
-              <option value="down">{tr("down")}</option>
-              <option value="unknown">{tr("unknown")}</option>
-            </select>
-          </label>
-          <label className="checkbox-label">
-            <input
-              name="reagents"
-              type="checkbox"
-              defaultChecked={editor.record.reagents}
-            />
-            {tr("reagents")} — {tr("yes")}
-          </label>
-        </>
-      )}
-      {(localError || error) && (
-        <p className="form-error" role="alert">
-          {localError || error}
-        </p>
-      )}
-      <div className="form-actions">
-        <button className="button secondary" type="button" onClick={onCancel}>
-          {tr("cancel")}
-        </button>
-        <button className="button primary" type="submit" disabled={busy}>
-          {busy ? (
-            <LoaderCircle size={16} className="spin" />
-          ) : (
-            <Check size={16} />
-          )}{" "}
-          {tr(busy ? "saving" : "save")}
-        </button>
-      </div>
-    </form>
-  );
-}
-
-function MedicineEvidence({
-  record,
-  insight,
-  locale,
-  tr,
-  date,
-  fmt,
-}: {
-  record: Inventory;
-  insight: InventoryInsight | undefined;
-  locale: Locale;
-  tr: (key: MessageKey) => string;
-  date: (value: string) => string;
-  fmt: (n: number) => string;
-}) {
-  const forecast = insight?.forecast;
-  return (
-    <section className="medicine-evidence">
-      <h3>
-        <Activity size={17} />
-        {tr("medicineEvidence")}
-      </h3>
-      <p className="evidence-subtitle">
-        {tr("actual")} / {tr("forecast")} · {tr("units")}
-      </p>
-      <DemandChart
-        history={record.history}
-        forecast={forecast}
-        locale={locale}
-        actualLabel={tr("actual")}
-        forecastLabel={tr("forecast")}
-        rangeLabel={tr("range")}
-      />
-      <div className="evidence-grid">
-        <div>
-          <span>{tr("method")}</span>
-          <strong>{forecastMethod(forecast, tr)}</strong>
-        </div>
-        <div>
-          <span>{tr("mae")}</span>
-          <strong>
-            {forecast?.mae === null || forecast?.mae === undefined
-              ? "—"
-              : fmt(forecast.mae)}
-          </strong>
-        </div>
-        <div>
-          <span>{tr("observations")}</span>
-          <strong>{forecast?.trainingPoints ?? 0}</strong>
-        </div>
-        <div>
-          <span>{tr("validation")}</span>
-          <strong>{forecast?.validationPoints ?? 0}</strong>
-        </div>
-        <div>
-          <span>{tr("shortageDate")}</span>
-          <strong>
-            {insight?.shortageDate
-              ? date(insight.shortageDate)
-              : tr("noEstimate")}
-          </strong>
-        </div>
-        <div>
-          <span>{tr("replenishment")}</span>
-          <strong>
-            {insight ? fmt(insight.replenishment) : "—"} {tr("units")}
-          </strong>
-        </div>
-      </div>
-      {forecast?.attribution && (
-        <ShapPanel attribution={forecast.attribution} locale={locale} />
-      )}
-      <p>
-        {forecast?.method === "insufficient-data"
-          ? tr("noHistory")
-          : tr("predictionHelp")}
-      </p>
-      <p>{tr("maeHelp")}</p>
-      <p>{tr("empiricalNote")}</p>
-    </section>
   );
 }

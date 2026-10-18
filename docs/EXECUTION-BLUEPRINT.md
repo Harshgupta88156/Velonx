@@ -14,19 +14,19 @@ One Next.js App Router/React/TypeScript application; plain CSS design tokens, Lu
 
 Times are elapsed from implementation start, not a promised wall-clock completion time.
 
-| Window | Owner | Dependencies | Deliverable and acceptance gate |
-| --- | --- | --- | --- |
-| 0:00–0:25 | Integrator | Empty workspace, brief | Shared domain types, bounded scope, theme, seed assumptions, one public main branch |
-| 0:25–1:15 | Foundation + UI | Types | Server boots, seeded database survives restart, nav skeleton and consistent API snapshot |
-| 0:40–2:10 | Intelligence | Types + fixtures | Past-only forecast validation, shortage calculations, safe shared allocation budgets, focused tests |
-| 1:15–2:45 | Foundation + UI | Database/API | Inventory, beds, footfall, attendance, diagnostics read/update paths, audit events |
-| 2:10–3:40 | Integrator + QA | Engine + database | Approval/reservation/dispatch/receive transaction workflow, stale/repeat/role/concurrency checks |
-| 2:45–4:20 | UI | Operational APIs | Polished command centre, evidence drawer, mobile interactions, complete English/Hindi critical paths |
-| 4:20–5:00 | Integrator | Integrated interface | Browser primary demo, language context, empty/error states, optional Marathi if core passes |
-| 5:00–5:30 | All | Complete primary story | Mandatory feature freeze; only fixes, tests, documentation and release |
-| 5:30–6:10 | QA + Integrator | Frozen source | Clean install/build, production server, persistence/concurrent approval probes, source-size checks |
-| 6:10–6:35 | Integrator | Release candidate | Docker deployment if access/storage available; live workflow/restart checks before claiming hosted success |
-| 6:35–7:00 | Integrator | Verified repository | Final source push, one remote branch, public clone/size checks, demo script; 25-minute recovery buffer |
+| Window    | Owner           | Dependencies           | Deliverable and acceptance gate                                                                            |
+| --------- | --------------- | ---------------------- | ---------------------------------------------------------------------------------------------------------- |
+| 0:00–0:25 | Integrator      | Empty workspace, brief | Shared domain types, bounded scope, theme, seed assumptions, one public main branch                        |
+| 0:25–1:15 | Foundation + UI | Types                  | Server boots, seeded database survives restart, nav skeleton and consistent API snapshot                   |
+| 0:40–2:10 | Intelligence    | Types + fixtures       | Past-only forecast validation, shortage calculations, safe shared allocation budgets, focused tests        |
+| 1:15–2:45 | Foundation + UI | Database/API           | Inventory, beds, footfall, attendance, diagnostics read/update paths, audit events                         |
+| 2:10–3:40 | Integrator + QA | Engine + database      | Approval/reservation/dispatch/receive transaction workflow, stale/repeat/role/concurrency checks           |
+| 2:45–4:20 | UI              | Operational APIs       | Polished command centre, evidence drawer, mobile interactions, complete English/Hindi critical paths       |
+| 4:20–5:00 | Integrator      | Integrated interface   | Browser primary demo, language context, empty/error states, optional Marathi if core passes                |
+| 5:00–5:30 | All             | Complete primary story | Mandatory feature freeze; only fixes, tests, documentation and release                                     |
+| 5:30–6:10 | QA + Integrator | Frozen source          | Clean install/build, production server, persistence/concurrent approval probes, source-size checks         |
+| 6:10–6:35 | Integrator      | Release candidate      | Docker deployment if access/storage available; live workflow/restart checks before claiming hosted success |
+| 6:35–7:00 | Integrator      | Verified repository    | Final source push, one remote branch, public clone/size checks, demo script; 25-minute recovery buffer     |
 
 Commit/push passing milestones to main, preserve the last runnable state, and record what passed. Do not spend hackathon portal attempts on unverified candidates. Portal submission requires the actual destination/rules and remains separate from source delivery.
 
@@ -58,17 +58,17 @@ Accessibility: keyboard-operable controls; labelled forms; focus-visible states;
 
 ## 7. Risk and recovery
 
-| Risk | Detection | Recovery preserving demonstration |
-| --- | --- | --- |
-| libSQL native module fails | Foundation cannot load native module | Use supported Node LTS/prebuilt target; time-box to15 minutes; use @libsql/client with the same SQLite contract only if necessary |
-| Forecast library incompatibility | Build/import failure | Pure TypeScript statistical baselines already avoid Python/native forecast service |
-| Hosted disk unavailable | Mutation lost on restart | Retain local durable demo and provide Docker instructions; do not advertise an ephemeral host as persistent |
-| Missing environment | Startup/auth fails | Local SQLite + explicit synthetic demo default; protected mode denies writes if key missing |
-| Concurrent/double approval | Repeated API creates excess commitment | Immediate transaction + recompute + versions + pending inbound budget; regression test |
-| UI integration conflict | Typecheck/API shape mismatch | Integrator controls contract; reconcile module, run focused checks, preserve last working main |
-| Time overrun | P0 workflow not passing by3:40 | Freeze decorative/third-language extras; complete core flow and mandatory English/Hindi |
-| Repository push identity differs | Browser owner != CLI identity | Keep source safe locally; use approved repository-scoped authentication or user-operated upload/push; never silently change owner |
-| Unrealistic AI claim | Unsupported percentage/probability | Show model, assumptions, validation error and no-data state; state synthetic evaluation limits |
+| Risk                             | Detection                              | Recovery preserving demonstration                                                                                                 |
+| -------------------------------- | -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| libSQL native module fails       | Foundation cannot load native module   | Use supported Node LTS/prebuilt target; time-box to15 minutes; use @libsql/client with the same SQLite contract only if necessary |
+| Forecast library incompatibility | Build/import failure                   | Pure TypeScript statistical baselines already avoid Python/native forecast service                                                |
+| Hosted disk unavailable          | Mutation lost on restart               | Retain local durable demo and provide Docker instructions; do not advertise an ephemeral host as persistent                       |
+| Missing environment              | Startup/auth fails                     | Local SQLite + explicit synthetic demo default; protected mode denies writes if key missing                                       |
+| Concurrent/double approval       | Repeated API creates excess commitment | Immediate transaction + recompute + versions + pending inbound budget; regression test                                            |
+| UI integration conflict          | Typecheck/API shape mismatch           | Integrator controls contract; reconcile module, run focused checks, preserve last working main                                    |
+| Time overrun                     | P0 workflow not passing by3:40         | Freeze decorative/third-language extras; complete core flow and mandatory English/Hindi                                           |
+| Repository push identity differs | Browser owner != CLI identity          | Keep source safe locally; use approved repository-scoped authentication or user-operated upload/push; never silently change owner |
+| Unrealistic AI claim             | Unsupported percentage/probability     | Show model, assumptions, validation error and no-data state; state synthetic evaluation limits                                    |
 
 ## 8. Execution-ready Antigravity handoff
 

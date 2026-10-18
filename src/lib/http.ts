@@ -2,7 +2,28 @@ import { timingSafeEqual } from "node:crypto";
 import { ZodError } from "zod";
 import { ServiceError } from "./service";
 
+const WRITE_LIMIT = 60;
+const WRITE_WINDOW_MS = 60_000;
+const writeLog = new Map<string, number[]>();
+/** Per-instance sliding-window limit on writes per client address. On
+ * serverless hosting each instance keeps its own window, so this is a basic
+ * abuse brake, not a global quota. */
+export function rateLimit(request: Request, now = Date.now()) {
+  const client =
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    request.headers.get("x-real-ip") ||
+    "local";
+  const recent = (writeLog.get(client) ?? []).filter(
+    (time) => now - time < WRITE_WINDOW_MS,
+  );
+  if (recent.length >= WRITE_LIMIT)
+    throw new ServiceError(429, "Too many changes. Wait a minute and retry.");
+  recent.push(now);
+  writeLog.set(client, recent);
+  if (writeLog.size > 10_000) writeLog.clear();
+}
 export function authorizeRequest(request: Request) {
+  rateLimit(request);
   const origin = request.headers.get("origin");
   // Next may normalize request.url to localhost behind its Node server/proxy.
   // Host is the browser's requested authority; do not trust forwarded-host here.
@@ -37,11 +58,17 @@ export function authorizeRequest(request: Request) {
       );
   }
 }
+const MAX_BODY_BYTES = 16_384;
 export async function jsonBody(request: Request) {
   if (!request.headers.get("content-type")?.includes("application/json"))
     throw new ServiceError(415, "Use application/json.");
-  const text = await request.text();
-  if (text.length > 16_384) throw new ServiceError(413, "Request too large.");
+  // Reject declared oversize bodies before reading; then enforce on actual bytes.
+  if (Number(request.headers.get("content-length") ?? 0) > MAX_BODY_BYTES)
+    throw new ServiceError(413, "Request too large.");
+  const bytes = new Uint8Array(await request.arrayBuffer());
+  if (bytes.byteLength > MAX_BODY_BYTES)
+    throw new ServiceError(413, "Request too large.");
+  const text = new TextDecoder().decode(bytes);
   try {
     return JSON.parse(text);
   } catch {

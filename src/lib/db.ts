@@ -1,4 +1,9 @@
-import { createClient, type Client, type Transaction } from "@libsql/client";
+import {
+  createClient,
+  type Client,
+  type Row,
+  type Transaction,
+} from "@libsql/client";
 import { mkdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { createSeed } from "./seed";
@@ -14,7 +19,6 @@ import type {
 } from "./types";
 
 type Param = string | number | null;
-type Row = Record<string, unknown>;
 /** Thin async wrapper over a libSQL client or open transaction. Keeps the
  * prepare().run/get/all call shape so SQL stays readable. */
 export class Db {
@@ -29,10 +33,8 @@ export class Db {
       run: async (...args: Param[]) => ({
         changes: (await query(args)).rowsAffected,
       }),
-      get: async (...args: Param[]) =>
-        (await query(args)).rows[0] as unknown as Row | undefined,
-      all: async (...args: Param[]) =>
-        (await query(args)).rows as unknown as Row[],
+      get: async (...args: Param[]) => (await query(args)).rows.at(0),
+      all: async (...args: Param[]) => (await query(args)).rows,
     };
   }
   /** One round trip. Row sets are returned in statement order. */
@@ -44,7 +46,7 @@ export class Db {
       "commit" in this.executor
         ? await this.executor.batch(statements)
         : await this.executor.batch(statements, mode);
-    return results.map((r) => r.rows as unknown as Row[]);
+    return results.map((r) => r.rows);
   }
   transaction<T>(fn: (tx: Db) => Promise<T>) {
     const root = this.root;

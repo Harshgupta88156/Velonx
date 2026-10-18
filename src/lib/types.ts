@@ -93,7 +93,12 @@ export type Forecast = {
 export type Attribution = {
   baseline: number;
   prediction: number;
-  contributions: { feature: "lastDay" | "sameWeekdayLastWeek" | "weekMean"; label: string; input: number; shap: number }[];
+  contributions: {
+    feature: "lastDay" | "sameWeekdayLastWeek" | "weekMean";
+    label: string;
+    input: number;
+    shap: number;
+  }[];
 };
 export type InventoryInsight = {
   inventoryId: string;

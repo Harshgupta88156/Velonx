@@ -41,22 +41,32 @@ export const en = {
   transfers: "Stock transfers",
   activity: "Activity log",
   planning: "Planning",
-  planningSub: "Interventions, resilience, transfer what-if and shortage timeline for district coordination.",
+  actions: "Actions",
+  tableRegion: "Scrollable table",
+  planningSub:
+    "Interventions, resilience, transfer what-if and shortage timeline for district coordination.",
   intelligence: "OVERVIEW",
   operations: "FACILITY OPERATIONS",
   support: "District coordination workspace",
   demo: "Synthetic demo",
   live: "Reporting connected",
   overview: "District operations overview",
-  overviewSub: "Reported facility activity, capacity and supply exceptions for district coordination.",
+  overviewSub:
+    "Reported facility activity, capacity and supply exceptions for district coordination.",
   facilitiesSub: "Facility directory and reported operational indicators.",
-  inventorySub: "Usable stock, expiry, recorded consumption and proposed redistribution.",
-  flowSub: "Daily outpatient visits and validated baseline forecasts for capacity planning.",
+  inventorySub:
+    "Usable stock, expiry, recorded consumption and proposed redistribution.",
+  flowSub:
+    "Daily outpatient visits and validated baseline forecasts for capacity planning.",
   bedsSub: "Reported operational beds and current occupancy by facility.",
-  doctorsSub: "Reported doctor availability against scheduled counts; individual shifts are not modelled.",
-  diagnosticsSub: "Reported equipment and reagent availability for laboratory services.",
-  transfersSub: "Review stock movements, reserve quantities, and record dispatch and receipt.",
-  activitySub: "Recorded inventory adjustments, facility updates and stock movements.",
+  doctorsSub:
+    "Reported doctor availability against scheduled counts; individual shifts are not modelled.",
+  diagnosticsSub:
+    "Reported equipment and reagent availability for laboratory services.",
+  transfersSub:
+    "Review stock movements, reserve quantities, and record dispatch and receipt.",
+  activitySub:
+    "Recorded inventory adjustments, facility updates and stock movements.",
   today: "Today",
   updated: "Updated",
   refresh: "Refresh data",
@@ -83,7 +93,8 @@ export const en = {
   pulseSub: "Facilities by reported operational alert level",
   network: "Facility network",
   networkSub: "Facility coordinates · synthetic directory",
-  networkNote: "Coordinate view only; district boundaries, routes and travel times are not represented.",
+  networkNote:
+    "Coordinate view only; district boundaries, routes and travel times are not represented.",
   viewFacilities: "View facilities",
   priority: "Stock redistribution proposals",
   prioritySub: "Forecast-informed suggestions · administrator review required",
@@ -94,14 +105,16 @@ export const en = {
   chartSub: "Recorded daily visits and a 7-day planning estimate",
   actual: "Actual",
   forecast: "Forecast",
-  chartNote: "Visit counts represent encounters, not unique patients. Estimates support capacity planning.",
+  chartNote:
+    "Visit counts represent encounters, not unique patients. Estimates support capacity planning.",
   evidence: "Forecast & validation",
   method: "Selected method",
   mae: "Validation MAE",
   observations: "Training observations",
   validation: "Validation observations",
   uncertainty: "Uncertainty",
-  noHistory: "At least 21 valid consecutive daily observations are required for a demand estimate.",
+  noHistory:
+    "At least 21 valid consecutive daily observations are required for a demand estimate.",
   maeHelp:
     "MAE is the average absolute error on held-out history. Lower is better; it does not guarantee future accuracy.",
   predictionHelp:
@@ -224,7 +237,8 @@ export const en = {
   selectChart: "Chart facility",
   limitedScope: "Showing your selected facility",
   mapLegend: "Select a facility to inspect",
-  syntheticNote: "Synthetic facility, encounter and stock data. Operational estimates require source validation and human review.",
+  syntheticNote:
+    "Synthetic facility, encounter and stock data. Operational estimates require source validation and human review.",
   on: "Yes",
   off: "No",
   administration: "Access & scope",
@@ -302,21 +316,30 @@ const hi: Record<MessageKey, string> = {
   transfers: "भंडार स्थानांतरण",
   activity: "गतिविधि रिकॉर्ड",
   planning: "योजना",
-  planningSub: "जिला समन्वय के लिए हस्तक्षेप, सहनशीलता, स्थानांतरण पूर्वावलोकन और कमी की समयरेखा।",
+  actions: "कार्रवाई",
+  tableRegion: "स्क्रॉल होने वाली तालिका",
+  planningSub:
+    "जिला समन्वय के लिए हस्तक्षेप, सहनशीलता, स्थानांतरण पूर्वावलोकन और कमी की समयरेखा।",
   intelligence: "अवलोकन",
   operations: "केंद्र संचालन",
   support: "जिला समन्वय कार्यक्षेत्र",
   demo: "कृत्रिम डेमो",
   live: "रिपोर्टिंग जुड़ी है",
   overview: "जिला संचालन अवलोकन",
-  overviewSub: "जिला समन्वय के लिए केंद्रों की दर्ज गतिविधि, क्षमता और आपूर्ति में अपवाद।",
+  overviewSub:
+    "जिला समन्वय के लिए केंद्रों की दर्ज गतिविधि, क्षमता और आपूर्ति में अपवाद।",
   facilitiesSub: "स्वास्थ्य केंद्र निर्देशिका और दर्ज संचालन संकेतक।",
-  inventorySub: "उपयोग योग्य भंडार, समाप्ति, दर्ज खपत और प्रस्तावित पुनर्वितरण।",
-  flowSub: "क्षमता योजना के लिए दैनिक बाह्यरोगी विज़िट और सत्यापित आधारभूत पूर्वानुमान।",
+  inventorySub:
+    "उपयोग योग्य भंडार, समाप्ति, दर्ज खपत और प्रस्तावित पुनर्वितरण।",
+  flowSub:
+    "क्षमता योजना के लिए दैनिक बाह्यरोगी विज़िट और सत्यापित आधारभूत पूर्वानुमान।",
   bedsSub: "हर केंद्र के दर्ज कार्यशील बिस्तर और वर्तमान उपयोग।",
-  doctorsSub: "निर्धारित संख्या के सापेक्ष दर्ज डॉक्टर उपलब्धता; व्यक्तिगत शिफ्ट का मॉडल नहीं है।",
-  diagnosticsSub: "प्रयोगशाला सेवाओं के लिए उपकरण और अभिकर्मक की दर्ज उपलब्धता।",
-  transfersSub: "भंडार स्थानांतरण की समीक्षा करें, मात्रा आरक्षित करें और रवानगी व प्राप्ति दर्ज करें।",
+  doctorsSub:
+    "निर्धारित संख्या के सापेक्ष दर्ज डॉक्टर उपलब्धता; व्यक्तिगत शिफ्ट का मॉडल नहीं है।",
+  diagnosticsSub:
+    "प्रयोगशाला सेवाओं के लिए उपकरण और अभिकर्मक की दर्ज उपलब्धता।",
+  transfersSub:
+    "भंडार स्थानांतरण की समीक्षा करें, मात्रा आरक्षित करें और रवानगी व प्राप्ति दर्ज करें।",
   activitySub: "भंडार सुधार, केंद्र अपडेट और भंडार स्थानांतरण का रिकॉर्ड।",
   today: "आज",
   updated: "अपडेट",
@@ -344,7 +367,8 @@ const hi: Record<MessageKey, string> = {
   pulseSub: "दर्ज संचालन चेतावनी स्तर के अनुसार केंद्र",
   network: "स्वास्थ्य केंद्र नेटवर्क",
   networkSub: "केंद्र निर्देशांक · कृत्रिम निर्देशिका",
-  networkNote: "केवल निर्देशांक दृश्य; जिला सीमाएँ, मार्ग और यात्रा समय नहीं दर्शाए गए हैं।",
+  networkNote:
+    "केवल निर्देशांक दृश्य; जिला सीमाएँ, मार्ग और यात्रा समय नहीं दर्शाए गए हैं।",
   viewFacilities: "केंद्र देखें",
   priority: "भंडार पुनर्वितरण प्रस्ताव",
   prioritySub: "पूर्वानुमान आधारित सुझाव · प्रशासक समीक्षा आवश्यक",
@@ -355,14 +379,16 @@ const hi: Record<MessageKey, string> = {
   chartSub: "दर्ज दैनिक विज़िट और 7 दिन का योजना अनुमान",
   actual: "वास्तविक",
   forecast: "पूर्वानुमान",
-  chartNote: "विज़िट संख्या मुलाकातों को दर्शाती है, अलग-अलग मरीजों को नहीं। अनुमान क्षमता योजना में सहायक हैं।",
+  chartNote:
+    "विज़िट संख्या मुलाकातों को दर्शाती है, अलग-अलग मरीजों को नहीं। अनुमान क्षमता योजना में सहायक हैं।",
   evidence: "पूर्वानुमान और सत्यापन",
   method: "चयनित विधि",
   mae: "सत्यापन MAE",
   observations: "प्रशिक्षण अवलोकन",
   validation: "सत्यापन अवलोकन",
   uncertainty: "अनिश्चितता",
-  noHistory: "माँग अनुमान के लिए कम से कम 21 वैध लगातार दैनिक अवलोकन आवश्यक हैं।",
+  noHistory:
+    "माँग अनुमान के लिए कम से कम 21 वैध लगातार दैनिक अवलोकन आवश्यक हैं।",
   maeHelp:
     "MAE अलग रखे गए ऐतिहासिक आँकड़ों पर औसत निरपेक्ष त्रुटि है। कम बेहतर है; भविष्य की सटीकता की गारंटी नहीं।",
   predictionHelp:
@@ -485,7 +511,8 @@ const hi: Record<MessageKey, string> = {
   selectChart: "चार्ट का केंद्र",
   limitedScope: "चयनित केंद्र दिख रहा है",
   mapLegend: "जानकारी के लिए केंद्र चुनें",
-  syntheticNote: "केंद्र, मुलाकात और भंडार के कृत्रिम आँकड़े। संचालन अनुमानों के लिए स्रोत सत्यापन और मानव समीक्षा आवश्यक है।",
+  syntheticNote:
+    "केंद्र, मुलाकात और भंडार के कृत्रिम आँकड़े। संचालन अनुमानों के लिए स्रोत सत्यापन और मानव समीक्षा आवश्यक है।",
   on: "हाँ",
   off: "नहीं",
   administration: "पहुँच और दायरा",
@@ -563,20 +590,29 @@ const mr: Record<MessageKey, string> = {
   transfers: "साठा हस्तांतरण",
   activity: "कृती नोंद",
   planning: "नियोजन",
-  planningSub: "जिल्हा समन्वयासाठी हस्तक्षेप, सक्षमता, हस्तांतरण पूर्वावलोकन आणि कमतरता वेळापत्रक.",
+  actions: "कृती",
+  tableRegion: "स्क्रोल करता येणारी तालिका",
+  planningSub:
+    "जिल्हा समन्वयासाठी हस्तक्षेप, सक्षमता, हस्तांतरण पूर्वावलोकन आणि कमतरता वेळापत्रक.",
   operations: "केंद्र संचालन",
   support: "जिल्हा समन्वय कार्यक्षेत्र",
   demo: "कृत्रिम डेमो",
   live: "अहवाल जोडलेले",
   overview: "जिल्हा संचालन आढावा",
-  overviewSub: "जिल्हा समन्वयासाठी केंद्रांची नोंदवलेली गतिविधी, क्षमता आणि पुरवठ्यातील अपवाद.",
+  overviewSub:
+    "जिल्हा समन्वयासाठी केंद्रांची नोंदवलेली गतिविधी, क्षमता आणि पुरवठ्यातील अपवाद.",
   facilitiesSub: "केंद्र निर्देशिका आणि नोंदवलेले संचालन निर्देशक.",
-  inventorySub: "वापरण्यायोग्य साठा, कालबाह्यता, नोंदवलेला वापर आणि प्रस्तावित पुनर्वितरण.",
-  flowSub: "क्षमता नियोजनासाठी दैनंदिन बाह्यरुग्ण भेटी आणि पडताळलेले आधारभूत अंदाज.",
+  inventorySub:
+    "वापरण्यायोग्य साठा, कालबाह्यता, नोंदवलेला वापर आणि प्रस्तावित पुनर्वितरण.",
+  flowSub:
+    "क्षमता नियोजनासाठी दैनंदिन बाह्यरुग्ण भेटी आणि पडताळलेले आधारभूत अंदाज.",
   bedsSub: "प्रत्येक केंद्रातील नोंदवलेल्या कार्यरत खाटा आणि सध्याची व्याप्ती.",
-  doctorsSub: "नियोजित संख्येच्या तुलनेत नोंदवलेली डॉक्टर उपलब्धता; वैयक्तिक पाळ्यांचे मॉडेल नाही.",
-  diagnosticsSub: "प्रयोगशाळा सेवांसाठी उपकरणे आणि अभिकर्मकांची नोंदवलेली उपलब्धता.",
-  transfersSub: "साठा हस्तांतरण तपासा, प्रमाण राखीव ठेवा आणि पाठवणे व प्राप्ती नोंदवा.",
+  doctorsSub:
+    "नियोजित संख्येच्या तुलनेत नोंदवलेली डॉक्टर उपलब्धता; वैयक्तिक पाळ्यांचे मॉडेल नाही.",
+  diagnosticsSub:
+    "प्रयोगशाळा सेवांसाठी उपकरणे आणि अभिकर्मकांची नोंदवलेली उपलब्धता.",
+  transfersSub:
+    "साठा हस्तांतरण तपासा, प्रमाण राखीव ठेवा आणि पाठवणे व प्राप्ती नोंदवा.",
   activitySub: "साठा दुरुस्ती, केंद्र अद्यतने आणि साठा हस्तांतरणाच्या नोंदी.",
   today: "आज",
   updated: "अद्ययावत",
@@ -604,7 +640,8 @@ const mr: Record<MessageKey, string> = {
   pulseSub: "नोंदवलेल्या संचालन सूचना पातळीनुसार केंद्रे",
   network: "आरोग्य केंद्र नेटवर्क",
   networkSub: "केंद्र निर्देशांक · कृत्रिम निर्देशिका",
-  networkNote: "केवळ निर्देशांक दृश्य; जिल्हा सीमा, मार्ग आणि प्रवासाची वेळ दर्शवलेली नाही.",
+  networkNote:
+    "केवळ निर्देशांक दृश्य; जिल्हा सीमा, मार्ग आणि प्रवासाची वेळ दर्शवलेली नाही.",
   viewFacilities: "केंद्रे पहा",
   priority: "साठा पुनर्वितरण प्रस्ताव",
   prioritySub: "अंदाजावर आधारित सूचना · प्रशासक समीक्षा आवश्यक",
@@ -614,13 +651,15 @@ const mr: Record<MessageKey, string> = {
   chartSub: "नोंदवलेल्या दैनंदिन भेटी आणि 7 दिवसांचा नियोजन अंदाज",
   actual: "प्रत्यक्ष",
   forecast: "अंदाज",
-  chartNote: "भेटींची संख्या वैद्यकीय भेटी दर्शवते, स्वतंत्र रुग्णांची संख्या नाही. अंदाज क्षमता नियोजनासाठी आहेत.",
+  chartNote:
+    "भेटींची संख्या वैद्यकीय भेटी दर्शवते, स्वतंत्र रुग्णांची संख्या नाही. अंदाज क्षमता नियोजनासाठी आहेत.",
   evidence: "अंदाज आणि पडताळणी",
   method: "निवडलेली पद्धत",
   observations: "प्रशिक्षण निरीक्षणे",
   validation: "पडताळणी निरीक्षणे",
   uncertainty: "अनिश्चितता",
-  noHistory: "मागणीच्या अंदाजासाठी किमान 21 वैध सलग दैनिक निरीक्षणे आवश्यक आहेत.",
+  noHistory:
+    "मागणीच्या अंदाजासाठी किमान 21 वैध सलग दैनिक निरीक्षणे आवश्यक आहेत.",
   maeHelp:
     "MAE म्हणजे वेगळ्या ठेवलेल्या ऐतिहासिक डेटावरील सरासरी निरपेक्ष त्रुटी. कमी चांगले; भविष्यातील अचूकतेची हमी नाही.",
   predictionHelp:
@@ -742,7 +781,8 @@ const mr: Record<MessageKey, string> = {
   selectChart: "आलेखाचे केंद्र",
   limitedScope: "निवडलेले केंद्र दाखवले आहे",
   mapLegend: "तपशीलासाठी केंद्र निवडा",
-  syntheticNote: "केंद्र, भेटी आणि साठ्याचा कृत्रिम डेटा. संचालन अंदाजांना स्रोत पडताळणी आणि मानवी समीक्षा आवश्यक आहे.",
+  syntheticNote:
+    "केंद्र, भेटी आणि साठ्याचा कृत्रिम डेटा. संचालन अंदाजांना स्रोत पडताळणी आणि मानवी समीक्षा आवश्यक आहे.",
   on: "होय",
   off: "नाही",
   administration: "प्रवेश आणि क्षेत्र",

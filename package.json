@@ -7,10 +7,12 @@
     "build": "next build && node scripts/prepare-standalone.mjs",
     "start": "node scripts/start.mjs",
     "typecheck": "next typegen && tsc --noEmit",
-    "test": "tsx --test tests/*.test.ts",
+    "test": "tsx --test tests/*.test.ts tests/*.test.tsx",
     "db:seed": "tsx scripts/seed.ts",
     "check:repo": "node scripts/check-repo.mjs",
-    "test:http": "node scripts/verify-http.mjs"
+    "test:http": "node scripts/verify-http.mjs",
+    "lint": "eslint .",
+    "format": "prettier --check ."
   },
   "dependencies": {
     "@libsql/client": "^0.15.15",
@@ -23,10 +25,16 @@
     "zod": "^4.0.0"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.5",
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "eslint": "^9.39.5",
+    "eslint-plugin-jsx-a11y": "^6.10.2",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "prettier": "^3.9.10",
     "tsx": "^4.20.0",
-    "typescript": "^5.9.0"
+    "typescript": "^5.9.0",
+    "typescript-eslint": "^8.71.2"
   }
 }

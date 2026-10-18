@@ -22,6 +22,8 @@ npm run dev
 Open http://localhost:3000. The first database access also seeds automatically. Re-running the seed preserves existing records. All quantities are medicine catalogue units (tablets, capsules, sachets, bottles). `DATABASE_PATH` defaults to `./data/districtcare.db`. The seed script uses process environment/defaults; Next.js loads `.env.local` for the server. Export a custom `DATABASE_PATH` when running CLI scripts against a non-default database.
 
 ```sh
+npm run lint
+npm run format
 npm test
 npm run typecheck
 npm run build
@@ -63,7 +65,11 @@ One TypeScript application: Next.js App Router + React; Recharts; Lucide; next-i
 
 ```text
 src/app/              pages, layout, styles, Node.js route handlers
-src/components/       interactive operations interface
+src/components/       command-centre.tsx (shell, views, state) plus extracted components:
+                      ui/ (primitives, modal, charts), facility-map, record-form,
+                      medicine-evidence, shap-panel, planning-panel, interventions,
+                      data-standards, activity-log; each feature panel keeps a
+                      typed en/hi/mr catalogue in *.messages.ts
 src/messages/         localized operational copy
 src/lib/types.ts      shared domain and API contracts
 src/lib/seed.ts       reproducible synthetic district generator
@@ -80,15 +86,15 @@ docs/                 execution blueprint, methodology, delivery evidence
 
 SQLite tables: `interventions`, `facilities`, `medicines`, `inventory`, `footfall`, `diagnostics`, `transfers`, `audit`, `meta`. Inventory uses integer constraints, foreign keys, nonnegative stock, reservations no greater than physical stock, and optimistic versions. Facility/diagnostic records and history arrays are typed JSON; inventory and transfers use structured columns. `meta` retains the demonstration analysis date and immutable shipment expiry at approval.
 
-| API | Purpose |
-| --- | --- |
-| `GET /api/snapshot` | Consistent persisted snapshot and derived intelligence; no cache |
-| `GET /api/health` | Database readiness |
-| `POST /api/transfers` | Recompute evidence and reserve an approved recommendation |
-| `POST /api/transfers/:id` | Dispatch, receive, or cancel an approved shipment |
-| `POST /api/inventory/:id` | Versioned stock correction with required reason |
-| `POST /api/operations` | Update beds, arrivals, recorded staffing, or diagnostic status |
-| `POST /api/interventions` | Administrator records acknowledged / in-progress / resolved with a note |
+| API                           | Purpose                                                                       |
+| ----------------------------- | ----------------------------------------------------------------------------- |
+| `GET /api/snapshot`           | Consistent persisted snapshot and derived intelligence; no cache              |
+| `GET /api/health`             | Database readiness                                                            |
+| `POST /api/transfers`         | Recompute evidence and reserve an approved recommendation                     |
+| `POST /api/transfers/:id`     | Dispatch, receive, or cancel an approved shipment                             |
+| `POST /api/inventory/:id`     | Versioned stock correction with required reason                               |
+| `POST /api/operations`        | Update beds, arrivals, recorded staffing, or diagnostic status                |
+| `POST /api/interventions`     | Administrator records acknowledged / in-progress / resolved with a note       |
 | `GET /api/exports/facilities` | FHIR R4 Bundle of Organization and Location resources (optional `facilityId`) |
 
 ## Forecasting methodology
@@ -109,7 +115,7 @@ One active aggregate medicine record is modeled per facility. Receipt uses the e
 
 `DEMO_MODE=true` (default) intentionally allows visitors to exercise synthetic roles. The role selector demonstrates server-enforced workflow permissions and facility scope; it is not identity verification. The same synthetic dataset is shared among visitors on one instance. Do not load real operational or patient data into this deployment.
 
-With `DEMO_MODE=false`, mutation APIs require the server-only `ADMIN_KEY` via `x-admin-key`; the browser is read-only. A shared API key is not a production identity system. Production needs authenticated sessions, tenant boundaries, facility memberships, detailed permissions, rate limiting, tamper-resistant audit retention, backups, and operator security review. Cross-origin browser mutations are rejected, payloads validated, secrets excluded, and errors do not expose database internals. All reads expose synthetic demonstration records by design.
+Write endpoints check same-origin requests, cap bodies at 16 KB (bytes), and apply a per-instance limit of 60 writes per minute per client. Production responses send a Content-Security-Policy and HSTS. With `DEMO_MODE=false`, mutation APIs require the server-only `ADMIN_KEY` via `x-admin-key`; the browser is read-only. A shared API key is not a production identity system. Production needs authenticated sessions, tenant boundaries, facility memberships, detailed permissions, rate limiting, tamper-resistant audit retention, backups, and operator security review. Cross-origin browser mutations are rejected, payloads validated, secrets excluded, and errors do not expose database internals. All reads expose synthetic demonstration records by design.
 
 ## Deployment
 

@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import "../components/data-standards.css";
+import "../components/panels.css";
 export const metadata: Metadata = {
   title: "DistrictCare — District Healthcare Operations",
   description:

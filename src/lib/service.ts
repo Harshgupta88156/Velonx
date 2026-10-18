@@ -221,11 +221,12 @@ export async function transitionTransfer(
           .run(transfer.quantity, transfer.quantity, donor.id);
         status = "dispatched";
       } else if (input.action === "receive") {
-        const expiry = (
-          (await db
-            .prepare("SELECT value FROM meta WHERE key=?")
-            .get(`transfer-expiry:${id}`)) as { value: string }
-        ).value;
+        const expiryRow = await db
+          .prepare("SELECT value FROM meta WHERE key=?")
+          .get(`transfer-expiry:${id}`);
+        if (typeof expiryRow?.value !== "string")
+          throw new ServiceError(409, "Shipment expiry record is missing.");
+        const expiry = expiryRow.value;
         if (expiry < s.asOf)
           throw new ServiceError(
             409,
@@ -423,13 +424,15 @@ export async function setIntervention(
         )
       )
         throw new ServiceError(404, "Facility not found.");
-      const current = (await db
+      const currentRow = await db
         .prepare("SELECT status FROM interventions WHERE facility_id=?")
-        .get(input.facilityId)) as
-        { status: keyof typeof interventionOrder } | undefined;
+        .get(input.facilityId);
+      const current = interventionSchema.shape.status.safeParse(
+        currentRow?.status,
+      );
       if (
-        current &&
-        interventionOrder[input.status] < interventionOrder[current.status]
+        current.success &&
+        interventionOrder[input.status] < interventionOrder[current.data]
       )
         throw new ServiceError(
           409,

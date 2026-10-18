@@ -1,19 +1,42 @@
-import { getDb, loadSnapshot, loadInterventions } from "@/lib/db";
+import { getDb, loadSnapshot, loadInterventions, type Db } from "@/lib/db";
+import type { Snapshot } from "@/lib/types";
 import { analyze } from "@/lib/intelligence";
 import { handleError } from "@/lib/http";
 import { assessDataQuality } from "@/lib/data-quality";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+type Derived = {
+  key: string;
+  intelligence: ReturnType<typeof analyze>;
+  quality: ReturnType<typeof assessDataQuality>;
+};
+// Forecasting and quality checks are pure functions of the snapshot. Every
+// write bumps the revision, so (connection, revision, analysis date) is a
+// safe cache key and polling clients do not recompute unchanged results.
+const derivedByConnection = new WeakMap<Db, Derived>();
+function derive(db: Db, snapshot: Snapshot): Derived {
+  const key = `${snapshot.revision}:${snapshot.asOf}`;
+  const cached = derivedByConnection.get(db);
+  if (cached?.key === key) return cached;
+  const fresh = {
+    key,
+    intelligence: analyze(snapshot),
+    quality: assessDataQuality(snapshot),
+  };
+  derivedByConnection.set(db, fresh);
+  return fresh;
+}
 export async function GET() {
   try {
     const db = await getDb();
     const snapshot = await loadSnapshot(db);
+    const { intelligence, quality } = derive(db, snapshot);
     return Response.json(
       {
         snapshot,
-        intelligence: analyze(snapshot),
+        intelligence,
         interventions: await loadInterventions(db),
-        quality: assessDataQuality(snapshot),
+        quality,
         demoMode: process.env.DEMO_MODE !== "false",
       },
       { headers: { "Cache-Control": "no-store" } },
