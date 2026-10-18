@@ -1072,6 +1072,8 @@ main {
   margin-top: 17px;
 }
 .table-scroll {
+  /* Contain absolutely positioned screen-reader labels inside the scroller. */
+  position: relative;
   width: 100%;
   overflow-x: auto;
 }
