@@ -1,0 +1,15 @@
+node_modules/
+.next/
+out/
+dist/
+.env*
+!.env.example
+data/
+*.db
+*.db-wal
+*.db-shm
+*.tsbuildinfo
+test-results/
+playwright-report/
+.DS_Store
+*.log

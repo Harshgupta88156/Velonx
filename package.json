@@ -1,0 +1,33 @@
+{
+  "name": "velonx",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build && node scripts/prepare-standalone.mjs",
+    "start": "node scripts/start.mjs",
+    "typecheck": "next typegen && tsc --noEmit",
+    "test": "tsx --test tests/*.test.ts",
+    "db:seed": "tsx scripts/seed.ts",
+    "check:repo": "node scripts/check-repo.mjs",
+    "test:http": "node scripts/verify-http.mjs"
+  },
+  "dependencies": {
+    "next": "16.4.2",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "better-sqlite3": "13.0.3",
+    "zod": "^4.0.0",
+    "lucide-react": "^0.468.0",
+    "recharts": "^3.0.0",
+    "next-intl": "4.14.9"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.0",
+    "tsx": "^4.20.0",
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@types/better-sqlite3": "^7.6.0"
+  }
+}
