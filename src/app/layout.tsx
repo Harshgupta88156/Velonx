@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import "./globals.css";
 export const metadata: Metadata = {
-  title: "Velonx — District Health Intelligence",
+  title: "DistrictCare — District Healthcare Operations",
   description:
-    "A connected command centre for district healthcare. Synthetic hackathon demonstration.",
+    "District healthcare operations: synthetic facility activity, pharmacy stock, reported capacity and data quality for coordination.",
 };
 export default function RootLayout({
   children,

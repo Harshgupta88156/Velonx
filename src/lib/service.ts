@@ -397,3 +397,37 @@ export function updateOperations(input: z.infer<typeof operationSchema>) {
     })
     .immediate();
 }
+
+export const interventionSchema = z
+  .object({
+    facilityId: z.string().min(1).max(80),
+    role,
+    status: z.enum(["acknowledged", "in_progress", "resolved"]),
+    note: z.string().trim().min(5).max(400),
+  })
+  .strict();
+const interventionOrder = { acknowledged: 0, in_progress: 1, resolved: 2 };
+export function setIntervention(input: z.infer<typeof interventionSchema>) {
+  requireRole(input.role, ["administrator"]);
+  const db = getDb();
+  return db
+    .transaction(() => {
+      if (!loadSnapshot(db).facilities.some((f) => f.id === input.facilityId))
+        throw new ServiceError(404, "Facility not found.");
+      const current = db
+        .prepare("SELECT status FROM interventions WHERE facility_id=?")
+        .get(input.facilityId) as { status: keyof typeof interventionOrder } | undefined;
+      if (
+        current &&
+        interventionOrder[input.status] < interventionOrder[current.status]
+      )
+        throw new ServiceError(409, "An intervention status cannot move backwards.");
+      db.prepare(
+        "INSERT INTO interventions VALUES (?,?,?,?,?) ON CONFLICT(facility_id) DO UPDATE SET status=excluded.status,note=excluded.note,actor=excluded.actor,updated_at=excluded.updated_at",
+      ).run(input.facilityId, input.status, input.note, input.role, new Date().toISOString());
+      writeAudit(db, input.role, "intervention." + input.status, input.facilityId, JSON.stringify({ note: input.note }));
+      bumpRevision(db);
+      return { facilityId: input.facilityId, status: input.status };
+    })
+    .immediate();
+}

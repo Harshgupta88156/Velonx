@@ -43,6 +43,9 @@ export function getDb(): Database.Database {
       medicine_id TEXT NOT NULL REFERENCES medicines(id), quantity INTEGER NOT NULL CHECK(quantity>0),
       status TEXT NOT NULL CHECK(status IN ('approved','dispatched','received','cancelled')), created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL, approved_by TEXT NOT NULL, reason TEXT NOT NULL, CHECK(donor_id<>recipient_id));
+    CREATE TABLE IF NOT EXISTS interventions (
+      facility_id TEXT PRIMARY KEY REFERENCES facilities(id), status TEXT NOT NULL CHECK(status IN ('acknowledged','in_progress','resolved')),
+      note TEXT NOT NULL, actor TEXT NOT NULL, updated_at TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS audit (id TEXT PRIMARY KEY, at TEXT NOT NULL, actor TEXT NOT NULL, action TEXT NOT NULL, entity_id TEXT NOT NULL, detail TEXT NOT NULL);
   `);
   connection = db;
@@ -201,4 +204,29 @@ export function writeAudit(
     entityId,
     detail,
   );
+}
+
+export type Intervention = {
+  facilityId: string;
+  status: "acknowledged" | "in_progress" | "resolved";
+  note: string;
+  actor: string;
+  updatedAt: string;
+};
+export function loadInterventions(db = getDb()): Intervention[] {
+  return (
+    db.prepare("SELECT * FROM interventions ORDER BY updated_at DESC").all() as {
+      facility_id: string;
+      status: Intervention["status"];
+      note: string;
+      actor: string;
+      updated_at: string;
+    }[]
+  ).map((r) => ({
+    facilityId: r.facility_id,
+    status: r.status,
+    note: r.note,
+    actor: r.actor,
+    updatedAt: r.updated_at,
+  }));
 }
