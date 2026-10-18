@@ -36,6 +36,7 @@ import {
   ShieldCheck,
   SlidersHorizontal,
   Stethoscope,
+  Target,
   Truck,
   Users,
   X,
@@ -68,13 +69,13 @@ import type {
   Snapshot,
 } from "@/lib/types";
 import type { MessageKey } from "@/messages";
-import { PRODUCT_NAME } from '@/lib/branding';
-import type { QualityReport } from '@/lib/data-quality';
-import DataStandards from './data-standards';
-import Interventions from './interventions';
-import ShapPanel from './shap-panel';
-import PlanningPanel from './planning-panel';
-import type { Intervention } from '@/lib/db';
+import { PRODUCT_NAME } from "@/lib/branding";
+import type { QualityReport } from "@/lib/data-quality";
+import DataStandards from "./data-standards";
+import Interventions from "./interventions";
+import ShapPanel from "./shap-panel";
+import PlanningPanel from "./planning-panel";
+import type { Intervention } from "@/lib/db";
 type View =
   | "command"
   | "facilities"
@@ -85,6 +86,7 @@ type View =
   | "diagnostics"
   | "transfers"
   | "activity"
+  | "planning"
   | "quality";
 type Data = {
   snapshot: Snapshot;
@@ -107,6 +109,7 @@ const navigation: { id: View; icon: typeof Activity }[] = [
   { id: "diagnostics", icon: FlaskConical },
   { id: "transfers", icon: Truck },
   { id: "activity", icon: ClipboardList },
+  { id: "planning", icon: Target },
   { id: "quality", icon: ShieldCheck },
 ];
 const round = (n: number) => Math.round(n * 10) / 10;
@@ -711,7 +714,7 @@ export default function CommandCentre({
             <HeartPulse size={25} strokeWidth={2.5} />
           </span>
           <span>
-              {PRODUCT_NAME}
+            {PRODUCT_NAME}
             <small>{tr("brand")}</small>
           </span>
         </a>
@@ -1001,24 +1004,6 @@ export default function CommandCentre({
               )}
               {view === "command" && (
                 <>
-                  <Interventions
-                    facilities={snap?.facilities ?? []}
-                    risks={data.intelligence.risks}
-                    interventions={data.interventions ?? []}
-                    isAdmin={role === "administrator"}
-                    busy={busy}
-                    locale={locale}
-                    onSave={(facilityId, status, note) =>
-                      void mutate("/api/interventions", { facilityId, status, note })
-                    }
-                  />
-                  {snap && (
-                    <PlanningPanel
-                      snapshot={snap}
-                      intelligence={data.intelligence}
-                      locale={locale}
-                    />
-                  )}
                   <div className="command-grid">
                     <section className="panel network-panel">
                       <div className="panel-heading">
@@ -1761,7 +1746,41 @@ export default function CommandCentre({
                   </div>
                 </section>
               )}
-              {view === 'quality' && snap && data.quality && <DataStandards snapshot={snap} report={data.quality} facilityIds={filtered.map(f=>f.id)} locale={locale} onFacilitySelect={setSelected} />}
+              {view === "planning" && snap && (
+                <>
+                  <Interventions
+                    facilities={snap?.facilities ?? []}
+                    risks={data.intelligence.risks}
+                    interventions={data.interventions ?? []}
+                    isAdmin={role === "administrator"}
+                    busy={busy}
+                    locale={locale}
+                    onSave={(facilityId, status, note) =>
+                      void mutate("/api/interventions", {
+                        facilityId,
+                        status,
+                        note,
+                      })
+                    }
+                  />
+                  {snap && (
+                    <PlanningPanel
+                      snapshot={snap}
+                      intelligence={data.intelligence}
+                      locale={locale}
+                    />
+                  )}
+                </>
+              )}
+              {view === "quality" && snap && data.quality && (
+                <DataStandards
+                  snapshot={snap}
+                  report={data.quality}
+                  facilityIds={filtered.map((f) => f.id)}
+                  locale={locale}
+                  onFacilitySelect={setSelected}
+                />
+              )}
               <footer className="main-footer">
                 <span>
                   <ShieldCheck size={14} />

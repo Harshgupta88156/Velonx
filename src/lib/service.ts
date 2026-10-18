@@ -68,12 +68,12 @@ function requireScope(
       "Select the facility responsible for this action.",
     );
 }
-export function approveTransfer(input: z.infer<typeof approvalSchema>) {
+export async function approveTransfer(input: z.infer<typeof approvalSchema>) {
   requireRole(input.role, ["administrator"]);
-  const db = getDb();
+  const db = await getDb();
   return db
-    .transaction(() => {
-      const s = loadSnapshot(db);
+    .transaction(async (db) => {
+      const s = await loadSnapshot(db);
       const rec = analyze(s).recommendations.find(
         (r) => r.id === input.recommendationId,
       );
@@ -100,7 +100,7 @@ export function approveTransfer(input: z.infer<typeof approvalSchema>) {
       const now = new Date().toISOString(),
         id = crypto.randomUUID();
       // Immediate transaction serializes the fresh recommendation and reservation.
-      const result = db
+      const result = await db
         .prepare(
           "UPDATE inventory SET reserved=reserved+?,version=version+1 WHERE id=? AND version=? AND quantity-reserved>=?",
         )
@@ -110,27 +110,28 @@ export function approveTransfer(input: z.infer<typeof approvalSchema>) {
           409,
           "Donor stock changed. Refresh and try again.",
         );
-      db.prepare("UPDATE inventory SET version=version+1 WHERE id=?").run(
-        recipient.id,
-      );
-      db.prepare("INSERT INTO transfers VALUES (?,?,?,?,?,?,?,?,?,?)").run(
-        id,
-        rec.donorId,
-        rec.recipientId,
-        rec.medicineId,
-        rec.quantity,
-        "approved",
-        now,
-        now,
-        "Demo administrator",
-        rec.explanation,
-      );
+      await db
+        .prepare("UPDATE inventory SET version=version+1 WHERE id=?")
+        .run(recipient.id);
+      await db
+        .prepare("INSERT INTO transfers VALUES (?,?,?,?,?,?,?,?,?,?)")
+        .run(
+          id,
+          rec.donorId,
+          rec.recipientId,
+          rec.medicineId,
+          rec.quantity,
+          "approved",
+          now,
+          now,
+          "Demo administrator",
+          rec.explanation,
+        );
       // Preserve batch expiry even if the donor record changes before receipt.
-      db.prepare("INSERT INTO meta VALUES (?,?)").run(
-        `transfer-expiry:${id}`,
-        donor.expiry,
-      );
-      writeAudit(
+      await db
+        .prepare("INSERT INTO meta VALUES (?,?)")
+        .run(`transfer-expiry:${id}`, donor.expiry);
+      await writeAudit(
         db,
         input.role,
         "transfer.approved",
@@ -144,19 +145,19 @@ export function approveTransfer(input: z.infer<typeof approvalSchema>) {
           availableBefore: donor.quantity - donor.reserved,
         }),
       );
-      bumpRevision(db);
+      await bumpRevision(db);
       return { id, status: "approved" };
     })
     .immediate();
 }
-export function transitionTransfer(
+export async function transitionTransfer(
   id: string,
   input: z.infer<typeof transitionSchema>,
 ) {
-  const db = getDb();
+  const db = await getDb();
   return db
-    .transaction(() => {
-      const s = loadSnapshot(db),
+    .transaction(async (db) => {
+      const s = await loadSnapshot(db),
         transfer = s.transfers.find((t) => t.id === id);
       if (!transfer) throw new ServiceError(404, "Transfer not found.");
       const expected = input.action === "receive" ? "dispatched" : "approved";
@@ -213,15 +214,17 @@ export function transitionTransfer(
             409,
             "Donor safety stock no longer supports dispatch. Cancel and review the recommendation.",
           );
-        db.prepare(
-          "UPDATE inventory SET quantity=quantity-?,reserved=reserved-?,version=version+1 WHERE id=?",
-        ).run(transfer.quantity, transfer.quantity, donor.id);
+        await db
+          .prepare(
+            "UPDATE inventory SET quantity=quantity-?,reserved=reserved-?,version=version+1 WHERE id=?",
+          )
+          .run(transfer.quantity, transfer.quantity, donor.id);
         status = "dispatched";
       } else if (input.action === "receive") {
         const expiry = (
-          db
+          (await db
             .prepare("SELECT value FROM meta WHERE key=?")
-            .get(`transfer-expiry:${id}`) as { value: string }
+            .get(`transfer-expiry:${id}`)) as { value: string }
         ).value;
         if (expiry < s.asOf)
           throw new ServiceError(
@@ -236,7 +239,7 @@ export function transitionTransfer(
           );
         if (oldExpired && recipient.quantity > 0) {
           // Quarantine expired stock in an immutable audit record, never count it as usable.
-          writeAudit(
+          await writeAudit(
             db,
             input.role,
             "inventory.quarantined",
@@ -252,28 +255,30 @@ export function transitionTransfer(
           oldExpired || recipient.quantity === 0
             ? expiry
             : [recipient.expiry, expiry].sort()[0];
-        db.prepare(
-          "UPDATE inventory SET quantity=?,expiry=?,version=version+1 WHERE id=?",
-        ).run(
-          (oldExpired ? 0 : recipient.quantity) + transfer.quantity,
-          newExpiry,
-          recipient.id,
-        );
+        await db
+          .prepare(
+            "UPDATE inventory SET quantity=?,expiry=?,version=version+1 WHERE id=?",
+          )
+          .run(
+            (oldExpired ? 0 : recipient.quantity) + transfer.quantity,
+            newExpiry,
+            recipient.id,
+          );
         status = "received";
       } else {
         if (donor.reserved < transfer.quantity)
           throw new ServiceError(409, "Reservation cannot be released.");
-        db.prepare(
-          "UPDATE inventory SET reserved=reserved-?,version=version+1 WHERE id=?",
-        ).run(transfer.quantity, donor.id);
+        await db
+          .prepare(
+            "UPDATE inventory SET reserved=reserved-?,version=version+1 WHERE id=?",
+          )
+          .run(transfer.quantity, donor.id);
         status = "cancelled";
       }
-      db.prepare("UPDATE transfers SET status=?,updated_at=? WHERE id=?").run(
-        status,
-        new Date().toISOString(),
-        id,
-      );
-      writeAudit(
+      await db
+        .prepare("UPDATE transfers SET status=?,updated_at=? WHERE id=?")
+        .run(status, new Date().toISOString(), id);
+      await writeAudit(
         db,
         input.role,
         `transfer.${status}`,
@@ -285,20 +290,20 @@ export function transitionTransfer(
           medicine: transfer.medicineId,
         }),
       );
-      bumpRevision(db);
+      await bumpRevision(db);
       return { id, status };
     })
     .immediate();
 }
-export function updateInventory(
+export async function updateInventory(
   id: string,
   input: z.infer<typeof inventorySchema>,
 ) {
   requireRole(input.role, ["administrator", "inventory", "officer"]);
-  const db = getDb();
+  const db = await getDb();
   return db
-    .transaction(() => {
-      const s = loadSnapshot(db),
+    .transaction(async (db) => {
+      const s = await loadSnapshot(db),
         row = s.inventory.find((i) => i.id === id);
       if (!row) throw new ServiceError(404, "Inventory row not found.");
       requireScope(input.role, input.facilityId, row.facilityId);
@@ -312,10 +317,10 @@ export function updateInventory(
           409,
           "Stock cannot be less than the reserved quantity. Cancel the reservation first.",
         );
-      db.prepare(
-        "UPDATE inventory SET quantity=?,version=version+1 WHERE id=?",
-      ).run(input.quantity, id);
-      writeAudit(
+      await db
+        .prepare("UPDATE inventory SET quantity=?,version=version+1 WHERE id=?")
+        .run(input.quantity, id);
+      await writeAudit(
         db,
         input.role,
         "inventory.adjusted",
@@ -326,17 +331,17 @@ export function updateInventory(
           reason: input.reason,
         }),
       );
-      bumpRevision(db);
+      await bumpRevision(db);
       return { id, quantity: input.quantity };
     })
     .immediate();
 }
-export function updateOperations(input: z.infer<typeof operationSchema>) {
+export async function updateOperations(input: z.infer<typeof operationSchema>) {
   requireRole(input.role, ["administrator", "officer"]);
-  const db = getDb();
+  const db = await getDb();
   return db
-    .transaction(() => {
-      const s = loadSnapshot(db),
+    .transaction(async (db) => {
+      const s = await loadSnapshot(db),
         f = s.facilities.find((f) => f.id === input.facilityId);
       if (!f) throw new ServiceError(404, "Facility not found.");
       const {
@@ -376,23 +381,21 @@ export function updateOperations(input: z.infer<typeof operationSchema>) {
           updatedAt: new Date().toISOString(),
         };
         if (equipment === "operational") updated.downtimeHours = 0;
-        db.prepare("UPDATE diagnostics SET body=? WHERE id=?").run(
-          JSON.stringify(updated),
-          d.id,
-        );
+        await db
+          .prepare("UPDATE diagnostics SET body=? WHERE id=?")
+          .run(JSON.stringify(updated), d.id);
       }
-      db.prepare("UPDATE facilities SET body=? WHERE id=?").run(
-        JSON.stringify(next),
-        facilityId,
-      );
-      writeAudit(
+      await db
+        .prepare("UPDATE facilities SET body=? WHERE id=?")
+        .run(JSON.stringify(next), facilityId);
+      await writeAudit(
         db,
         actor,
         "facility.updated",
         facilityId,
         JSON.stringify(input),
       );
-      bumpRevision(db);
+      await bumpRevision(db);
       return { id: facilityId };
     })
     .immediate();
@@ -407,26 +410,50 @@ export const interventionSchema = z
   })
   .strict();
 const interventionOrder = { acknowledged: 0, in_progress: 1, resolved: 2 };
-export function setIntervention(input: z.infer<typeof interventionSchema>) {
+export async function setIntervention(
+  input: z.infer<typeof interventionSchema>,
+) {
   requireRole(input.role, ["administrator"]);
-  const db = getDb();
+  const db = await getDb();
   return db
-    .transaction(() => {
-      if (!loadSnapshot(db).facilities.some((f) => f.id === input.facilityId))
+    .transaction(async (db) => {
+      if (
+        !(await loadSnapshot(db)).facilities.some(
+          (f) => f.id === input.facilityId,
+        )
+      )
         throw new ServiceError(404, "Facility not found.");
-      const current = db
+      const current = (await db
         .prepare("SELECT status FROM interventions WHERE facility_id=?")
-        .get(input.facilityId) as { status: keyof typeof interventionOrder } | undefined;
+        .get(input.facilityId)) as
+        { status: keyof typeof interventionOrder } | undefined;
       if (
         current &&
         interventionOrder[input.status] < interventionOrder[current.status]
       )
-        throw new ServiceError(409, "An intervention status cannot move backwards.");
-      db.prepare(
-        "INSERT INTO interventions VALUES (?,?,?,?,?) ON CONFLICT(facility_id) DO UPDATE SET status=excluded.status,note=excluded.note,actor=excluded.actor,updated_at=excluded.updated_at",
-      ).run(input.facilityId, input.status, input.note, input.role, new Date().toISOString());
-      writeAudit(db, input.role, "intervention." + input.status, input.facilityId, JSON.stringify({ note: input.note }));
-      bumpRevision(db);
+        throw new ServiceError(
+          409,
+          "An intervention status cannot move backwards.",
+        );
+      await db
+        .prepare(
+          "INSERT INTO interventions VALUES (?,?,?,?,?) ON CONFLICT(facility_id) DO UPDATE SET status=excluded.status,note=excluded.note,actor=excluded.actor,updated_at=excluded.updated_at",
+        )
+        .run(
+          input.facilityId,
+          input.status,
+          input.note,
+          input.role,
+          new Date().toISOString(),
+        );
+      await writeAudit(
+        db,
+        input.role,
+        "intervention." + input.status,
+        input.facilityId,
+        JSON.stringify({ note: input.note }),
+      );
+      await bumpRevision(db);
       return { facilityId: input.facilityId, status: input.status };
     })
     .immediate();

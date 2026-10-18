@@ -5,7 +5,7 @@ export async function POST(request: Request) {
   try {
     authorizeRequest(request);
     return Response.json(
-      updateOperations(operationSchema.parse(await jsonBody(request))),
+      await updateOperations(operationSchema.parse(await jsonBody(request))),
     );
   } catch (e) {
     return handleError(e);

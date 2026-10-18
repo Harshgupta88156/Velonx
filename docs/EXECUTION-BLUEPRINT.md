@@ -60,7 +60,7 @@ Accessibility: keyboard-operable controls; labelled forms; focus-visible states;
 
 | Risk | Detection | Recovery preserving demonstration |
 | --- | --- | --- |
-| SQLite install fails | Foundation cannot load native module | Use supported Node LTS/prebuilt target; time-box to15 minutes; use @libsql/client with the same SQLite contract only if necessary |
+| libSQL native module fails | Foundation cannot load native module | Use supported Node LTS/prebuilt target; time-box to15 minutes; use @libsql/client with the same SQLite contract only if necessary |
 | Forecast library incompatibility | Build/import failure | Pure TypeScript statistical baselines already avoid Python/native forecast service |
 | Hosted disk unavailable | Mutation lost on restart | Retain local durable demo and provide Docker instructions; do not advertise an ephemeral host as persistent |
 | Missing environment | Startup/auth fails | Local SQLite + explicit synthetic demo default; protected mode denies writes if key missing |

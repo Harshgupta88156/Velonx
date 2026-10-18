@@ -5,7 +5,7 @@ export async function POST(request: Request) {
   try {
     authorizeRequest(request);
     return Response.json(
-      setIntervention(interventionSchema.parse(await jsonBody(request))),
+      await setIntervention(interventionSchema.parse(await jsonBody(request))),
     );
   } catch (e) {
     return handleError(e);

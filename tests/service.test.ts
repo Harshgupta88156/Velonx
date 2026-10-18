@@ -4,6 +4,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { getDb, loadSnapshot } from "../src/lib/db";
+import type { Snapshot } from "../src/lib/types";
 import { analyze } from "../src/lib/intelligence";
 import {
   approveTransfer,
@@ -18,7 +19,9 @@ import {
 } from "../src/lib/service";
 import { authorizeRequest, jsonBody, handleError } from "../src/lib/http";
 
-const testDirectory = mkdtempSync(join(tmpdir(), "districtcare-service-tests-"));
+const testDirectory = mkdtempSync(
+  join(tmpdir(), "districtcare-service-tests-"),
+);
 const originalPath = process.env.DATABASE_PATH;
 const originalMode = process.env.DEMO_MODE;
 const originalKey = process.env.ADMIN_KEY;
@@ -31,8 +34,8 @@ beforeEach(() => {
   process.env.DEMO_MODE = "true";
   delete process.env.ADMIN_KEY;
 });
-after(() => {
-  getDb().close();
+after(async () => {
+  (await getDb()).close();
   rmSync(testDirectory, { recursive: true, force: true });
   for (const [key, value] of Object.entries({
     DATABASE_PATH: originalPath,
@@ -43,14 +46,20 @@ after(() => {
     else process.env[key] = value;
   }
 });
-const throwsStatus = (callback: () => unknown, status: number) =>
+const throwsStatus = (callback: () => Promise<unknown>, status: number) =>
+  assert.rejects(
+    callback,
+    (error: unknown) =>
+      error instanceof ServiceError && error.status === status,
+  );
+const throwsStatusSync = (callback: () => unknown, status: number) =>
   assert.throws(
     callback,
     (error: unknown) =>
       error instanceof ServiceError && error.status === status,
   );
-function recommendation() {
-  const snapshot = loadSnapshot();
+async function recommendation() {
+  const snapshot = await loadSnapshot();
   const intelligence = analyze(snapshot);
   const recommendation = intelligence.recommendations.find(
     (rec) =>
@@ -63,8 +72,9 @@ function recommendation() {
   assert.ok(recommendation, "seed must have a feasible recommendation");
   return recommendation;
 }
-function approve(rec = recommendation()) {
-  const result = approveTransfer({
+async function approve(rec?: Awaited<ReturnType<typeof recommendation>>) {
+  rec = rec ?? (await recommendation());
+  const result = await approveTransfer({
     recommendationId: rec.id,
     donorInventoryVersion: rec.donorInventoryVersion,
     recipientInventoryVersion: rec.recipientInventoryVersion,
@@ -73,24 +83,30 @@ function approve(rec = recommendation()) {
   return { rec, result };
 }
 
-test("approval reserves physical stock; lifecycle conserves total units and audits transitions", () => {
-  const before = loadSnapshot();
-  const { rec, result } = approve();
-  const donor = (s = loadSnapshot()) =>
+test("approval reserves physical stock; lifecycle conserves total units and audits transitions", async () => {
+  const before = await loadSnapshot();
+  const { rec, result } = await approve();
+  const donor = (s: Snapshot) =>
     s.inventory.find(
       (row) =>
         row.facilityId === rec.donorId && row.medicineId === rec.medicineId,
     )!;
-  const recipient = (s = loadSnapshot()) =>
+  const recipient = (s: Snapshot) =>
     s.inventory.find(
       (row) =>
         row.facilityId === rec.recipientId && row.medicineId === rec.medicineId,
     )!;
-  assert.equal(donor().quantity, donor(before).quantity);
-  assert.equal(donor().reserved, donor(before).reserved + rec.quantity);
-  assert.equal(recipient().quantity, recipient(before).quantity);
-  const afterApproval = loadSnapshot();
-  throwsStatus(
+  assert.equal(donor(await loadSnapshot()).quantity, donor(before).quantity);
+  assert.equal(
+    donor(await loadSnapshot()).reserved,
+    donor(before).reserved + rec.quantity,
+  );
+  assert.equal(
+    recipient(await loadSnapshot()).quantity,
+    recipient(before).quantity,
+  );
+  const afterApproval = await loadSnapshot();
+  await throwsStatus(
     () =>
       transitionTransfer(result.id, {
         action: "receive",
@@ -99,19 +115,25 @@ test("approval reserves physical stock; lifecycle conserves total units and audi
     409,
   );
   assert.deepEqual(
-    loadSnapshot(),
+    await loadSnapshot(),
     afterApproval,
     "failed transition rolls back all writes",
   );
-  transitionTransfer(result.id, {
+  await transitionTransfer(result.id, {
     action: "dispatch",
     role: "inventory",
     facilityId: rec.donorId,
   });
-  assert.equal(donor().quantity, donor(before).quantity - rec.quantity);
-  assert.equal(donor().reserved, donor(before).reserved);
-  assert.equal(recipient().quantity, recipient(before).quantity);
-  throwsStatus(
+  assert.equal(
+    donor(await loadSnapshot()).quantity,
+    donor(before).quantity - rec.quantity,
+  );
+  assert.equal(donor(await loadSnapshot()).reserved, donor(before).reserved);
+  assert.equal(
+    recipient(await loadSnapshot()).quantity,
+    recipient(before).quantity,
+  );
+  await throwsStatus(
     () =>
       transitionTransfer(result.id, {
         action: "dispatch",
@@ -119,7 +141,7 @@ test("approval reserves physical stock; lifecycle conserves total units and audi
       }),
     409,
   );
-  throwsStatus(
+  await throwsStatus(
     () =>
       transitionTransfer(result.id, {
         action: "receive",
@@ -128,17 +150,21 @@ test("approval reserves physical stock; lifecycle conserves total units and audi
       }),
     403,
   );
-  transitionTransfer(result.id, {
+  await transitionTransfer(result.id, {
     action: "receive",
     role: "inventory",
     facilityId: rec.recipientId,
   });
-  assert.equal(recipient().quantity, recipient(before).quantity + rec.quantity);
   assert.equal(
-    donor().quantity + recipient().quantity,
+    recipient(await loadSnapshot()).quantity,
+    recipient(before).quantity + rec.quantity,
+  );
+  assert.equal(
+    donor(await loadSnapshot()).quantity +
+      recipient(await loadSnapshot()).quantity,
     donor(before).quantity + recipient(before).quantity,
   );
-  throwsStatus(
+  await throwsStatus(
     () =>
       transitionTransfer(result.id, {
         action: "receive",
@@ -146,7 +172,7 @@ test("approval reserves physical stock; lifecycle conserves total units and audi
       }),
     409,
   );
-  const after = loadSnapshot();
+  const after = await loadSnapshot();
   assert.equal(after.revision, before.revision + 3);
   assert.deepEqual(
     after.audit
@@ -157,17 +183,17 @@ test("approval reserves physical stock; lifecycle conserves total units and audi
   );
 });
 
-test("stale versions, repeated approval, and non-administrator approvals fail without mutation", () => {
-  const rec = recommendation();
+test("stale versions, repeated approval, and non-administrator approvals fail without mutation", async () => {
+  const rec = await recommendation();
   const input = {
     recommendationId: rec.id,
     donorInventoryVersion: rec.donorInventoryVersion,
     recipientInventoryVersion: rec.recipientInventoryVersion,
     role: "administrator" as const,
   };
-  const before = loadSnapshot();
-  throwsStatus(() => approveTransfer({ ...input, role: "officer" }), 403);
-  throwsStatus(
+  const before = await loadSnapshot();
+  await throwsStatus(() => approveTransfer({ ...input, role: "officer" }), 403);
+  await throwsStatus(
     () =>
       approveTransfer({
         ...input,
@@ -175,11 +201,11 @@ test("stale versions, repeated approval, and non-administrator approvals fail wi
       }),
     409,
   );
-  assert.deepEqual(loadSnapshot(), before);
-  approveTransfer(input);
-  const once = loadSnapshot();
-  throwsStatus(() => approveTransfer(input), 409);
-  assert.deepEqual(loadSnapshot(), once);
+  assert.deepEqual(await loadSnapshot(), before);
+  await approveTransfer(input);
+  const once = await loadSnapshot();
+  await throwsStatus(() => approveTransfer(input), 409);
+  assert.deepEqual(await loadSnapshot(), once);
   assert.ok(
     !analyze(once).recommendations.some(
       (row) =>
@@ -190,10 +216,10 @@ test("stale versions, repeated approval, and non-administrator approvals fail wi
   );
 });
 
-test("cancel releases reservations and requires administrator role", () => {
-  const { rec, result } = approve();
-  const before = loadSnapshot();
-  throwsStatus(
+test("cancel releases reservations and requires administrator role", async () => {
+  const { rec, result } = await approve();
+  const before = await loadSnapshot();
+  await throwsStatus(
     () =>
       transitionTransfer(result.id, {
         action: "cancel",
@@ -202,9 +228,12 @@ test("cancel releases reservations and requires administrator role", () => {
       }),
     403,
   );
-  assert.deepEqual(loadSnapshot(), before);
-  transitionTransfer(result.id, { action: "cancel", role: "administrator" });
-  const after = loadSnapshot();
+  assert.deepEqual(await loadSnapshot(), before);
+  await transitionTransfer(result.id, {
+    action: "cancel",
+    role: "administrator",
+  });
+  const after = await loadSnapshot();
   const donorBefore = before.inventory.find(
     (row) =>
       row.facilityId === rec.donorId && row.medicineId === rec.medicineId,
@@ -217,7 +246,7 @@ test("cancel releases reservations and requires administrator role", () => {
     "cancelled",
   );
   assert.ok(after.audit.some((event) => event.action === "transfer.cancelled"));
-  throwsStatus(
+  await throwsStatus(
     () =>
       transitionTransfer(result.id, {
         action: "cancel",
@@ -227,14 +256,14 @@ test("cancel releases reservations and requires administrator role", () => {
   );
 });
 
-test("inventory and transfer mutations enforce responsible facility and reserved floor", () => {
-  const { rec, result } = approve();
-  const before = loadSnapshot();
+test("inventory and transfer mutations enforce responsible facility and reserved floor", async () => {
+  const { rec, result } = await approve();
+  const before = await loadSnapshot();
   const donor = before.inventory.find(
     (row) =>
       row.facilityId === rec.donorId && row.medicineId === rec.medicineId,
   )!;
-  throwsStatus(
+  await throwsStatus(
     () =>
       transitionTransfer(result.id, {
         action: "dispatch",
@@ -243,12 +272,12 @@ test("inventory and transfer mutations enforce responsible facility and reserved
       }),
     403,
   );
-  throwsStatus(
+  await throwsStatus(
     () =>
       transitionTransfer(result.id, { action: "dispatch", role: "inventory" }),
     403,
   );
-  throwsStatus(
+  await throwsStatus(
     () =>
       updateInventory(donor.id, {
         quantity: donor.quantity,
@@ -259,7 +288,7 @@ test("inventory and transfer mutations enforce responsible facility and reserved
       }),
     403,
   );
-  throwsStatus(
+  await throwsStatus(
     () =>
       updateInventory(donor.id, {
         quantity: donor.reserved - 1,
@@ -269,7 +298,7 @@ test("inventory and transfer mutations enforce responsible facility and reserved
       }),
     409,
   );
-  throwsStatus(
+  await throwsStatus(
     () =>
       updateInventory(donor.id, {
         quantity: donor.quantity,
@@ -279,8 +308,8 @@ test("inventory and transfer mutations enforce responsible facility and reserved
       }),
     409,
   );
-  assert.deepEqual(loadSnapshot(), before);
-  updateInventory(donor.id, {
+  assert.deepEqual(await loadSnapshot(), before);
+  await updateInventory(donor.id, {
     quantity: donor.quantity + 1,
     version: donor.version,
     reason: "Stock recount",
@@ -288,27 +317,38 @@ test("inventory and transfer mutations enforce responsible facility and reserved
     facilityId: rec.donorId,
   });
   assert.equal(
-    loadSnapshot().inventory.find((row) => row.id === donor.id)!.quantity,
+    (await loadSnapshot()).inventory.find((row) => row.id === donor.id)!
+      .quantity,
     donor.quantity + 1,
   );
 });
 
-test("expired destination batch is quarantined before receipt", () => {
-  const rec = recommendation();
-  getDb()
+test("expired destination batch is quarantined before receipt", async () => {
+  const rec = await recommendation();
+  await (
+    await getDb()
+  )
     .prepare(
       "UPDATE inventory SET quantity=22,expiry=? WHERE facility_id=? AND medicine_id=?",
     )
     .run("2000-01-01", rec.recipientId, rec.medicineId);
-  const selectedRecommendation = analyze(loadSnapshot()).recommendations.find(
+  const selectedRecommendation = analyze(
+    await loadSnapshot(),
+  ).recommendations.find(
     (row) =>
       row.recipientId === rec.recipientId && row.medicineId === rec.medicineId,
   )!;
   assert.ok(selectedRecommendation);
-  const { rec: selected, result } = approve(selectedRecommendation);
-  transitionTransfer(result.id, { action: "dispatch", role: "administrator" });
-  transitionTransfer(result.id, { action: "receive", role: "administrator" });
-  const after = loadSnapshot();
+  const { rec: selected, result } = await approve(selectedRecommendation);
+  await transitionTransfer(result.id, {
+    action: "dispatch",
+    role: "administrator",
+  });
+  await transitionTransfer(result.id, {
+    action: "receive",
+    role: "administrator",
+  });
+  const after = await loadSnapshot();
   const destination = after.inventory.find(
     (row) =>
       row.facilityId === selected.recipientId &&
@@ -329,20 +369,20 @@ test("expired destination batch is quarantined before receipt", () => {
   );
 });
 
-test("dispatch revalidates donor safety after a later stock adjustment", () => {
-  const { rec, result } = approve();
-  const donor = loadSnapshot().inventory.find(
+test("dispatch revalidates donor safety after a later stock adjustment", async () => {
+  const { rec, result } = await approve();
+  const donor = (await loadSnapshot()).inventory.find(
     (row) =>
       row.facilityId === rec.donorId && row.medicineId === rec.medicineId,
   )!;
-  updateInventory(donor.id, {
+  await updateInventory(donor.id, {
     quantity: donor.reserved,
     version: donor.version,
     reason: "Count corrected after damage",
     role: "administrator",
   });
-  const before = loadSnapshot();
-  throwsStatus(
+  const before = await loadSnapshot();
+  await throwsStatus(
     () =>
       transitionTransfer(result.id, {
         action: "dispatch",
@@ -350,22 +390,31 @@ test("dispatch revalidates donor safety after a later stock adjustment", () => {
       }),
     409,
   );
-  assert.deepEqual(loadSnapshot(), before);
-  transitionTransfer(result.id, { action: "cancel", role: "administrator" });
+  assert.deepEqual(await loadSnapshot(), before);
+  await transitionTransfer(result.id, {
+    action: "cancel",
+    role: "administrator",
+  });
   assert.equal(
-    loadSnapshot().inventory.find((row) => row.id === donor.id)!.reserved,
+    (await loadSnapshot()).inventory.find((row) => row.id === donor.id)!
+      .reserved,
     0,
   );
 });
 
-test("expired shipment is rejected on receipt with all state rolled back", () => {
-  const { result } = approve();
-  transitionTransfer(result.id, { action: "dispatch", role: "administrator" });
-  getDb()
+test("expired shipment is rejected on receipt with all state rolled back", async () => {
+  const { result } = await approve();
+  await transitionTransfer(result.id, {
+    action: "dispatch",
+    role: "administrator",
+  });
+  await (
+    await getDb()
+  )
     .prepare("UPDATE meta SET value=? WHERE key=?")
     .run("2000-01-01", `transfer-expiry:${result.id}`);
-  const before = loadSnapshot();
-  throwsStatus(
+  const before = await loadSnapshot();
+  await throwsStatus(
     () =>
       transitionTransfer(result.id, {
         action: "receive",
@@ -373,13 +422,13 @@ test("expired shipment is rejected on receipt with all state rolled back", () =>
       }),
     409,
   );
-  assert.deepEqual(loadSnapshot(), before);
+  assert.deepEqual(await loadSnapshot(), before);
 });
 
-test("operations validation and missing records roll back cleanly", () => {
-  const before = loadSnapshot();
+test("operations validation and missing records roll back cleanly", async () => {
+  const before = await loadSnapshot();
   const f = before.facilities[0];
-  throwsStatus(
+  await throwsStatus(
     () =>
       updateOperations({
         facilityId: f.id,
@@ -388,7 +437,7 @@ test("operations validation and missing records roll back cleanly", () => {
       }),
     403,
   );
-  throwsStatus(
+  await throwsStatus(
     () =>
       updateOperations({
         facilityId: f.id,
@@ -397,7 +446,7 @@ test("operations validation and missing records roll back cleanly", () => {
       }),
     400,
   );
-  throwsStatus(
+  await throwsStatus(
     () =>
       updateOperations({
         facilityId: f.id,
@@ -406,7 +455,7 @@ test("operations validation and missing records roll back cleanly", () => {
       }),
     400,
   );
-  throwsStatus(
+  await throwsStatus(
     () =>
       updateOperations({
         facilityId: f.id,
@@ -415,7 +464,7 @@ test("operations validation and missing records roll back cleanly", () => {
       }),
     400,
   );
-  throwsStatus(
+  await throwsStatus(
     () =>
       updateOperations({
         facilityId: f.id,
@@ -426,7 +475,7 @@ test("operations validation and missing records roll back cleanly", () => {
       }),
     404,
   );
-  throwsStatus(
+  await throwsStatus(
     () =>
       transitionTransfer("missing", {
         action: "cancel",
@@ -434,10 +483,10 @@ test("operations validation and missing records roll back cleanly", () => {
       }),
     404,
   );
-  assert.deepEqual(loadSnapshot(), before);
+  assert.deepEqual(await loadSnapshot(), before);
 });
 
-test("schemas reject negatives, fractions, excess fields, and empty operation payloads", () => {
+test("schemas reject negatives, fractions, excess fields, and empty operation payloads", async () => {
   const valid = {
     quantity: 10,
     version: 1,
@@ -485,30 +534,36 @@ test("schemas reject negatives, fractions, excess fields, and empty operation pa
   );
 });
 
-test("HTTP mutation guard rejects cross-origin and protected mode without exact key", () => {
+test("HTTP mutation guard rejects cross-origin and protected mode without exact key", async () => {
   const request = (headers: Record<string, string> = {}) =>
     new Request("http://localhost:3000/api/inventory/x", {
       method: "POST",
       headers,
     });
   authorizeRequest(request({ origin: "http://localhost:3000" }));
-  throwsStatus(() => authorizeRequest(request({ origin: "not-a-valid-origin" })), 403);
-  throwsStatus(() => authorizeRequest(request({ origin: "null" })), 403);
-  throwsStatus(() => authorizeRequest(request({ "sec-fetch-site": "cross-site" })), 403);
-  throwsStatus(
+  throwsStatusSync(
+    () => authorizeRequest(request({ origin: "not-a-valid-origin" })),
+    403,
+  );
+  throwsStatusSync(() => authorizeRequest(request({ origin: "null" })), 403);
+  throwsStatusSync(
+    () => authorizeRequest(request({ "sec-fetch-site": "cross-site" })),
+    403,
+  );
+  throwsStatusSync(
     () => authorizeRequest(request({ origin: "https://attacker.example" })),
     403,
   );
   process.env.DEMO_MODE = "false";
-  throwsStatus(() => authorizeRequest(request()), 401);
+  throwsStatusSync(() => authorizeRequest(request()), 401);
   process.env.ADMIN_KEY = "test-key-only";
-  throwsStatus(() => authorizeRequest(request()), 401);
-  throwsStatus(
+  throwsStatusSync(() => authorizeRequest(request()), 401);
+  throwsStatusSync(
     () => authorizeRequest(request({ "x-admin-key": "wrong-key" })),
     401,
   );
   authorizeRequest(request({ "x-admin-key": "test-key-only" }));
-  throwsStatus(
+  throwsStatusSync(
     () =>
       authorizeRequest(
         request({

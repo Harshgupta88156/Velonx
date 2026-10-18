@@ -110,11 +110,7 @@ test("moving average and smoothing can win; MAE uses past-only training", () => 
   assert.ok(
     Math.abs(moving.mae! - manualErrors.reduce((a, b) => a + b) / 14) < 1e-12,
   );
-  const trend = forecast(
-    history((i) => i).slice(-34),
-    7,
-    asOf,
-  );
+  const trend = forecast(history((i) => i).slice(-34), 7, asOf);
   assert.equal(trend.method, "exponential-smoothing");
   assert.ok(trend.mae! > 3 && trend.mae! < 3.34);
 });
@@ -338,8 +334,15 @@ test("risk score exposes bed/load/verified staffing/diagnostic contributors", ()
 });
 
 test("ridge model is eligible from 35 days and its SHAP values sum to prediction minus baseline", () => {
-  assert.notEqual(forecast(history((i) => i).slice(-34), 7, asOf).method, "ridge-regression");
-  const trend = forecast(history((i) => i), 7, asOf);
+  assert.notEqual(
+    forecast(history((i) => i).slice(-34), 7, asOf).method,
+    "ridge-regression",
+  );
+  const trend = forecast(
+    history((i) => i),
+    7,
+    asOf,
+  );
   assert.equal(trend.method, "ridge-regression");
   assert.ok(trend.mae! < 1);
   const a = trend.attribution!;

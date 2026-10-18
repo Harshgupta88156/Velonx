@@ -6,13 +6,13 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export async function GET() {
   try {
-    const db = getDb();
-    const snapshot = db.transaction(() => loadSnapshot(db))();
+    const db = await getDb();
+    const snapshot = await loadSnapshot(db);
     return Response.json(
       {
         snapshot,
         intelligence: analyze(snapshot),
-        interventions: loadInterventions(db),
+        interventions: await loadInterventions(db),
         quality: assessDataQuality(snapshot),
         demoMode: process.env.DEMO_MODE !== "false",
       },

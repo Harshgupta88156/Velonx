@@ -14,8 +14,7 @@ export async function GET(request: Request) {
     if ([...params.keys()].some(key => key !== 'facilityId') || params.getAll('facilityId').length > 1) return invalidScope();
     const facilityId = params.get('facilityId');
     if (facilityId !== null && !/^[A-Za-z0-9.-]{1,64}$/.test(facilityId)) return invalidScope();
-    const db = getDb();
-    const snapshot = db.transaction(() => loadSnapshot(db))();
+    const snapshot = await loadSnapshot();
     if (facilityId !== null && !snapshot.facilities.some(facility => facility.id === facilityId)) return invalidScope();
     const scoped = facilityId === null ? snapshot : { ...snapshot, facilities: snapshot.facilities.filter(facility => facility.id === facilityId) };
     return Response.json(exportFacilityDirectory(scoped), { headers: { ...headers, 'Content-Disposition': 'attachment; filename="districtcare-facilities.fhir.json"' } });

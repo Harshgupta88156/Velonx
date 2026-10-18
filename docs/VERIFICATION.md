@@ -10,6 +10,7 @@ Verified locally on 18 October 2026, macOS, Node v22.23.3, npm10.9.9. These resu
 | Production HTTP integration | 14 checks pass (`npm run test:http`) against owned process and disposable database |
 | Concurrent approval | Two simultaneous requests yield201 +409; one reservation/transfer |
 | Delivery conservation | Reservation preserves physical stock; dispatch deducts donor; receipt credits once; repeat actions rejected |
+| Data layer | libSQL (`@libsql/client`) async layer; local file verified. Hosted Turso and Vercel not verified from this host |
 | Restart persistence | Production process stopped/restarted against same SQLite file; transfer status, inventory correction and revision retained |
 | Browser primary story | Rampur paracetamol review → approval → dispatch → receipt completed |
 | Browser result | Rampur usable stock68 →408; forecast coverage2.3 →14 days; scoped critical medicine alerts1 →0; donor reserve retained |

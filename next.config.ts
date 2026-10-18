@@ -2,6 +2,8 @@ import type { NextConfig } from "next";
 const config: NextConfig = {
   output: "standalone",
   poweredByHeader: false,
+  // Native libSQL bindings must not be bundled.
+  serverExternalPackages: ["@libsql/client", "libsql"],
   outputFileTracingExcludes: {
     "/*": ["./data/**/*", "./.git/**/*", "./.env*", "./tests/**/*"],
   },

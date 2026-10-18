@@ -8,7 +8,7 @@ DistrictCare turns fragmented stock, bed, staffing, footfall, and diagnostic rec
 
 ## Run locally
 
-Requirements: Node.js 22 LTS, npm, and a writable local filesystem. Native SQLite prebuilt binaries are used where supported; a C++ toolchain may be needed on other platforms.
+Requirements: Node.js 22 LTS, npm, and a writable local filesystem. Native libSQL prebuilt binaries are used where supported; a C++ toolchain may be needed on other platforms.
 
 ```sh
 git clone https://github.com/Harshgupta88156/Velonx.git
@@ -46,7 +46,7 @@ The database, dependency folders, environment files, and build artifacts are ign
 - Human approval, donor dispatch, recipient receipt, cancellation before dispatch, and auditable inventory adjustment.
 - Bed, patient-load, attendance, and diagnostic readiness views with editable operational records.
 - English, Hindi, and Marathi interface dictionaries; locale changes retain workflow context.
-- Durable SQLite records and server-side validation. Refreshing a page does not reset interventions.
+- Durable SQLite/libSQL records and server-side validation. Refreshing a page does not reset interventions.
 
 ## Four-minute demonstration
 
@@ -59,7 +59,7 @@ The database, dependency folders, environment files, and build artifacts are ign
 
 ## Architecture
 
-One TypeScript application: Next.js App Router + React; Recharts; Lucide; next-intl; Zod; better-sqlite3. Pure forecasting and allocation code executes on the server in the same runtime. No LLM key, Python service, external map service, or paid AI endpoint is required. The ML is a small ridge regression implemented in TypeScript.
+One TypeScript application: Next.js App Router + React; Recharts; Lucide; next-intl; Zod; libSQL (`@libsql/client`: a local SQLite file, or hosted Turso). Pure forecasting and allocation code executes on the server in the same runtime. No LLM key, Python service, external map service, or paid AI endpoint is required. The ML is a small ridge regression implemented in TypeScript.
 
 ```text
 src/app/              pages, layout, styles, Node.js route handlers
@@ -101,7 +101,7 @@ The chart's error envelope is ± the empirical 90th percentile absolute one-step
 
 A deterministic urgency-first, nearest-feasible-donor heuristic allocates deficits. It is a constrained heuristic, not a globally optimal min-cost solution. Donors retain the larger of their configured minimum and conservative seven-day projected demand. Expired, inadequately observed, distant (>60 km straight-line), or soon-expiring donor stock is excluded. Suggested allocations share budgets; pending approved/dispatched inbound shipments reduce further requests.
 
-Approval re-derives recommendations under an immediate SQLite transaction, checks donor and recipient versions, reserves stock, and appends audit evidence. Dispatch deducts physical donor stock and its reservation after rechecking donor safety. Receipt credits the recipient exactly once. Cancellation is allowed only before dispatch. Actual delivery confirmation is an explicit action in the synthetic demo.
+Approval re-derives recommendations under an immediate (write) database transaction, checks donor and recipient versions, reserves stock, and appends audit evidence. Dispatch deducts physical donor stock and its reservation after rechecking donor safety. Receipt credits the recipient exactly once. Cancellation is allowed only before dispatch. Actual delivery confirmation is an explicit action in the synthetic demo.
 
 One active aggregate medicine record is modeled per facility. Receipt uses the earlier valid expiry when mixing batches. An expired destination batch is excluded and isolated into an audit record before receiving valid stock. Full batch-level FEFO management, cold-chain logistics, controlled-drug rules, and real transit reconciliation are future work.
 
@@ -113,7 +113,16 @@ With `DEMO_MODE=false`, mutation APIs require the server-only `ADMIN_KEY` via `x
 
 ## Deployment
 
-The supported deployment shape is **one Node.js instance with a persistent SQLite volume**. Serverless ephemeral filesystems and horizontally scaled independent SQLite copies are unsuitable for durable writes.
+Storage is libSQL (SQLite-compatible). With no configuration the app uses a local file (`DATABASE_PATH`, default `./data/districtcare.db`). Setting `TURSO_DATABASE_URL` (and `TURSO_AUTH_TOKEN`) switches to a hosted Turso database, which is what makes serverless hosting such as Vercel durable. The first request seeds an empty database. Ephemeral serverless filesystems are not used for data.
+
+**Vercel + Turso**
+
+1. Create a Turso database (`turso db create districtcare`), then note its URL (`turso db show districtcare --url`) and create a token (`turso db tokens create districtcare`).
+2. Import this GitHub repository in Vercel (framework: Next.js; no build overrides needed).
+3. Add environment variables: `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, `DEMO_MODE=true`. For a protected deployment set `DEMO_MODE=false` and `ADMIN_KEY`.
+4. Deploy, then open `/api/health` (expects `{"status":"ok"}`) and exercise the transfer workflow.
+
+**Docker with a persistent volume**
 
 ```sh
 docker build -t districtcare .
@@ -121,7 +130,7 @@ docker volume create districtcare-data
 docker run --rm -p 3000:3000 -v districtcare-data:/app/data districtcare
 ```
 
-The volume must be writable by UID 1001. For a host such as Render, use the Dockerfile, port 3000, a persistent disk mounted at `/app/data`, and a health check at `/api/health`. Check the host's current plans before provisioning paid storage. Do not claim deployment until a live URL passes the primary workflow and retains records after restart. No live deployment URL is claimed by these setup instructions.
+The volume must be writable by UID 1001. Health check: `/api/health`. Docker and Turso deployments are described but were not run from this repository's verification host; see `docs/VERIFICATION.md`.
 
 ## Submission constraints
 
@@ -131,4 +140,4 @@ Public repository: [Harshgupta88156/Velonx](https://github.com/Harshgupta88156/V
 
 This is a single-district synthetic prototype. The analysis date stays at database initialization to keep the recorded scenario reproducible; API refreshes show operational edits, not ingestion from hospitals. Travel distances are straight-line estimates, and next-day transfer arrival is assumed. Risk weights express operational readiness and scarcity, not staff performance or clinical outcomes. A zero-bed centre or missing record is a data/coverage condition, not automatic poor performance. No external feeds, SMS, clinical recommendations, production authentication, or guaranteed uptime are claimed. Future work includes verified data connectors, batch and expiry tracking, calibrated horizon-specific forecasts, route-aware constraints, authenticated facility users, and independent real-world evaluation.
 
-Official references: [Next.js](https://nextjs.org/docs/app/getting-started/installation), [next-intl](https://next-intl.dev/docs/getting-started/app-router), [better-sqlite3](https://github.com/WiseLibs/better-sqlite3), [Render persistent disks](https://render.com/docs/disks).
+Official references: [Next.js](https://nextjs.org/docs/app/getting-started/installation), [next-intl](https://next-intl.dev/docs/getting-started/app-router), [libSQL client](https://github.com/tursodatabase/libsql-client-ts), [Turso](https://docs.turso.tech/).

@@ -8,7 +8,7 @@ export async function POST(
   try {
     authorizeRequest(request);
     return Response.json(
-      updateInventory(
+      await updateInventory(
         (await params).id,
         inventorySchema.parse(await jsonBody(request)),
       ),

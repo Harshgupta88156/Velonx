@@ -5,7 +5,7 @@ export async function POST(request: Request) {
   try {
     authorizeRequest(request);
     return Response.json(
-      approveTransfer(approvalSchema.parse(await jsonBody(request))),
+      await approveTransfer(approvalSchema.parse(await jsonBody(request))),
       { status: 201 },
     );
   } catch (e) {

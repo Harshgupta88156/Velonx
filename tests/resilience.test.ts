@@ -10,7 +10,10 @@ test("resilience is a bounded average of four shares; missing attendance is excl
   assert.equal(r.components.length, 4);
   assert.ok(r.score !== null && r.score >= 0 && r.score <= 100);
   const staffing = r.components.find((c) => c.key === "staffing")!;
-  assert.equal(staffing.denominator, s.facilities.filter((f) => f.attendanceRecorded).length);
+  assert.equal(
+    staffing.denominator,
+    s.facilities.filter((f) => f.attendanceRecorded).length,
+  );
   const empty = { ...s, facilities: [], diagnostics: [] };
   const none = resilience(empty, { ...analyze(s), inventory: [] });
   assert.equal(none.score, null);

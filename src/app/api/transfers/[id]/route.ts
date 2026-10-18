@@ -8,7 +8,7 @@ export async function POST(
   try {
     authorizeRequest(request);
     return Response.json(
-      transitionTransfer(
+      await transitionTransfer(
         (await params).id,
         transitionSchema.parse(await jsonBody(request)),
       ),
