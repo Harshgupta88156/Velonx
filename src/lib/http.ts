@@ -1,6 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { ZodError } from "zod";
 import { ServiceError } from "./service";
+import { config } from "./config";
 
 const WRITE_LIMIT = 60;
 const WRITE_WINDOW_MS = 60_000;
@@ -43,8 +44,9 @@ export function authorizeRequest(request: Request) {
   }
   if (request.headers.get("sec-fetch-site") === "cross-site")
     throw new ServiceError(403, "Cross-origin mutation blocked.");
-  if (process.env.DEMO_MODE === "false") {
-    const expected = process.env.ADMIN_KEY;
+  const settings = config();
+  if (!settings.demoMode) {
+    const expected = settings.adminKey;
     const supplied = request.headers.get("x-admin-key");
     if (
       !expected ||

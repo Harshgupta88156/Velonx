@@ -7,6 +7,7 @@ import {
 import { mkdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { createSeed } from "./seed";
+import { config } from "./config";
 import type {
   Snapshot,
   Inventory,
@@ -91,23 +92,24 @@ const schema = `
     facility_id TEXT PRIMARY KEY REFERENCES facilities(id), status TEXT NOT NULL CHECK(status IN ('acknowledged','in_progress','resolved')),
     note TEXT NOT NULL, actor TEXT NOT NULL, updated_at TEXT NOT NULL);
   CREATE TABLE IF NOT EXISTS audit (id TEXT PRIMARY KEY, at TEXT NOT NULL, actor TEXT NOT NULL, action TEXT NOT NULL, entity_id TEXT NOT NULL, detail TEXT NOT NULL);
+  CREATE INDEX IF NOT EXISTS transfers_status_created ON transfers(status, created_at);
+  CREATE INDEX IF NOT EXISTS audit_at ON audit(at);
 `;
 
 /** Remote Turso when TURSO_DATABASE_URL is set; otherwise a local SQLite file. */
 function target() {
-  const remote = process.env.TURSO_DATABASE_URL;
-  if (remote)
+  const settings = config();
+  if (settings.tursoUrl)
     return {
-      url: remote,
-      authToken: process.env.TURSO_AUTH_TOKEN,
+      url: settings.tursoUrl,
+      authToken: settings.tursoToken,
       local: false,
     };
-  const path = resolve(
-    /* turbopackIgnore: true */ process.env.DATABASE_PATH ||
-      "./data/districtcare.db",
-  );
+  const path = resolve(/* turbopackIgnore: true */ settings.databasePath);
   return { url: `file:${path}`, authToken: undefined, local: true, path };
 }
+/** Completed transfers returned per snapshot. */
+export const COMPLETED_TRANSFER_LIMIT = 200;
 let connection: Promise<Db> | undefined;
 let connectionKey = "";
 export async function getDb(): Promise<Db> {
@@ -199,7 +201,17 @@ export async function loadSnapshot(db?: Db): Promise<Snapshot> {
       { sql: "SELECT body FROM medicines ORDER BY rowid" },
       { sql: "SELECT body FROM diagnostics ORDER BY rowid" },
       { sql: "SELECT * FROM inventory ORDER BY rowid" },
-      { sql: "SELECT * FROM transfers ORDER BY created_at DESC" },
+      {
+        // Every active transfer (needed for pending-inbound budgeting) plus
+        // the most recent completed history; completed rows stay in the table.
+        sql: `SELECT * FROM transfers
+                WHERE status IN ('approved','dispatched')
+                   OR id IN (SELECT id FROM transfers
+                             WHERE status IN ('received','cancelled')
+                             ORDER BY created_at DESC LIMIT ?)
+                ORDER BY created_at DESC`,
+        args: [COMPLETED_TRANSFER_LIMIT],
+      },
       { sql: "SELECT * FROM audit ORDER BY at DESC, rowid DESC LIMIT 200" },
       { sql: "SELECT * FROM footfall" },
       { sql: "SELECT key,value FROM meta" },

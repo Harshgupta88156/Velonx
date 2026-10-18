@@ -2,6 +2,7 @@ import { getDb, loadSnapshot, loadInterventions, type Db } from "@/lib/db";
 import type { Snapshot } from "@/lib/types";
 import { analyze } from "@/lib/intelligence";
 import { handleError } from "@/lib/http";
+import { config } from "@/lib/config";
 import { assessDataQuality } from "@/lib/data-quality";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -29,15 +30,18 @@ function derive(db: Db, snapshot: Snapshot): Derived {
 export async function GET() {
   try {
     const db = await getDb();
-    const snapshot = await loadSnapshot(db);
+    const [snapshot, interventions] = await Promise.all([
+      loadSnapshot(db),
+      loadInterventions(db),
+    ]);
     const { intelligence, quality } = derive(db, snapshot);
     return Response.json(
       {
         snapshot,
         intelligence,
-        interventions: await loadInterventions(db),
+        interventions,
         quality,
-        demoMode: process.env.DEMO_MODE !== "false",
+        demoMode: config().demoMode,
       },
       { headers: { "Cache-Control": "no-store" } },
     );

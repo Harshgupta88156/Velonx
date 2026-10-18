@@ -159,7 +159,15 @@ export async function transitionTransfer(
     .transaction(async (db) => {
       const s = await loadSnapshot(db),
         transfer = s.transfers.find((t) => t.id === id);
-      if (!transfer) throw new ServiceError(404, "Transfer not found.");
+      if (!transfer) {
+        // Older completed transfers are outside the snapshot window but still exist.
+        const exists = await db
+          .prepare("SELECT 1 AS found FROM transfers WHERE id=?")
+          .get(id);
+        throw exists
+          ? new ServiceError(409, "Transfer is already completed.")
+          : new ServiceError(404, "Transfer not found.");
+      }
       const expected = input.action === "receive" ? "dispatched" : "approved";
       if (transfer.status !== expected)
         throw new ServiceError(
