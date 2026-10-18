@@ -72,6 +72,8 @@ import { PRODUCT_NAME } from '@/lib/branding';
 import type { QualityReport } from '@/lib/data-quality';
 import DataStandards from './data-standards';
 import Interventions from './interventions';
+import ShapPanel from './shap-panel';
+import PlanningPanel from './planning-panel';
 import type { Intervention } from '@/lib/db';
 type View =
   | "command"
@@ -197,7 +199,7 @@ function Modal({
       >
         <div className="drawer-head">
           <div>
-            <span className="eyebrow">VELONX / {t("hourly")}</span>
+            <span className="eyebrow">DISTRICTCARE / {t("hourly")}</span>
             <h2>{title}</h2>
             {subtitle && <p>{subtitle}</p>}
           </div>
@@ -1010,6 +1012,13 @@ export default function CommandCentre({
                       void mutate("/api/interventions", { facilityId, status, note })
                     }
                   />
+                  {snap && (
+                    <PlanningPanel
+                      snapshot={snap}
+                      intelligence={data.intelligence}
+                      locale={locale}
+                    />
+                  )}
                   <div className="command-grid">
                     <section className="panel network-panel">
                       <div className="panel-heading">
@@ -2178,7 +2187,9 @@ function forecastMethod(
         ? "movingAverage"
         : f?.method === "exponential-smoothing"
           ? "exponentialSmoothing"
-          : "insufficientData",
+          : f?.method === "ridge-regression"
+            ? "ridgeRegression"
+            : "insufficientData",
   );
 }
 function DemandChart({
@@ -2725,6 +2736,9 @@ function MedicineEvidence({
           </strong>
         </div>
       </div>
+      {forecast?.attribution && (
+        <ShapPanel attribution={forecast.attribution} locale={locale} />
+      )}
       <p>
         {forecast?.method === "insufficient-data"
           ? tr("noHistory")

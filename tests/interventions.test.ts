@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { getDb, loadInterventions } from "../src/lib/db";
 import { setIntervention, ServiceError } from "../src/lib/service";
 
-process.env.DATABASE_PATH = join(mkdtempSync(join(tmpdir(), "velonx-int-")), "t.sqlite");
+process.env.DATABASE_PATH = join(mkdtempSync(join(tmpdir(), "districtcare-int-")), "t.sqlite");
 const base = { facilityId: "rampur", role: "administrator" as const, note: "Called block officer" };
 
 test("intervention status moves forward only, is admin-only, and is audited", () => {

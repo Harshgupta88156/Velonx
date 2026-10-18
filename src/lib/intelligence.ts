@@ -1,4 +1,5 @@
 import type {
+  Attribution,
   Forecast,
   HistoryPoint,
   Intelligence,
@@ -19,9 +20,94 @@ const methods: Method[] = [
   "seasonal-naive",
   "moving-average",
   "exponential-smoothing",
+  "ridge-regression",
+];
+const RIDGE_MIN_VALUES = 35; // 14 validation origins + at least 14 training rows + 7 lag days
+const RIDGE_LAMBDA = 1;
+const features = [
+  { feature: "lastDay", label: "Yesterday's demand" },
+  { feature: "sameWeekdayLastWeek", label: "Same weekday last week" },
+  { feature: "weekMean", label: "7-day mean" },
+] as const;
+const featureRow = (v: number[], t: number) => [
+  v[t - 1],
+  v[t - 7],
+  mean(v.slice(t - 7, t)),
 ];
 
+/** Ridge regression on standardized lag features, solved in closed form.
+ * Returns null when there are too few rows to fit. Prediction is linear, so
+ * exact SHAP values are w_j * (x_j - mean_j) (independent-feature form). */
+function fitRidge(values: number[]) {
+  const rows: number[][] = [];
+  const targets: number[] = [];
+  for (let t = 7; t < values.length; t++) {
+    rows.push(featureRow(values, t));
+    targets.push(values[t]);
+  }
+  if (rows.length < 14) return null;
+  const k = features.length;
+  const mu = Array.from({ length: k }, (_, j) => mean(rows.map((r) => r[j])));
+  const sd = Array.from(
+    { length: k },
+    (_, j) => Math.sqrt(mean(rows.map((r) => (r[j] - mu[j]) ** 2))) || 1,
+  );
+  const yMean = mean(targets);
+  const z = rows.map((r) => r.map((x, j) => (x - mu[j]) / sd[j]));
+  const a = Array.from({ length: k }, (_, i) =>
+    Array.from({ length: k + 1 }, (_, j) =>
+      j === k
+        ? sum(z.map((r, n) => r[i] * (targets[n] - yMean)))
+        : sum(z.map((r) => r[i] * r[j])) + (i === j ? RIDGE_LAMBDA : 0),
+    ),
+  );
+  for (let c = 0; c < k; c++) {
+    let pivot = c;
+    for (let r = c + 1; r < k; r++)
+      if (Math.abs(a[r][c]) > Math.abs(a[pivot][c])) pivot = r;
+    [a[c], a[pivot]] = [a[pivot], a[c]];
+    for (let r = 0; r < k; r++) {
+      if (r === c) continue;
+      const f = a[r][c] / a[c][c];
+      for (let j = c; j <= k; j++) a[r][j] -= f * a[c][j];
+    }
+  }
+  const w = a.map((row, i) => row[k] / row[i]); // per standardized feature
+  const coef = w.map((value, j) => value / sd[j]);
+  const next = (x: number[]) =>
+    yMean +
+    x.reduce((acc, value, j) => acc + w[j] * ((value - mu[j]) / sd[j]), 0);
+  return { mu, coef, yMean, next };
+}
+function ridgePredict(values: number[], horizon: number): number[] {
+  const model = fitRidge(values);
+  if (!model) return Array(horizon).fill(mean(values.slice(-7)));
+  const series = [...values];
+  const out: number[] = [];
+  for (let i = 0; i < horizon; i++) {
+    const value = positive(model.next(featureRow(series, series.length)));
+    series.push(value);
+    out.push(value);
+  }
+  return out;
+}
+export function explainRidge(values: number[]): Attribution | null {
+  const model = fitRidge(values);
+  if (!model) return null;
+  const x = featureRow(values, values.length);
+  return {
+    baseline: model.yMean,
+    prediction: model.next(x),
+    contributions: features.map((f, j) => ({
+      ...f,
+      input: x[j],
+      shap: model.coef[j] * (x[j] - model.mu[j]),
+    })),
+  };
+}
+
 function predict(values: number[], method: Method, horizon: number): number[] {
+  if (method === "ridge-regression") return ridgePredict(values, horizon);
   if (method === "seasonal-naive")
     return Array.from(
       { length: horizon },
@@ -84,13 +170,18 @@ export function forecast(
         ? "Latest observation is older than yesterday; no forecast issued."
         : "At least 21 consecutive daily observations are required (7 training + 14 validation).",
     };
-  const candidates = methods.map((method) => {
-    const errors = values.slice(-14).map((actual, index) => {
-      const training = values.slice(0, values.length - 14 + index);
-      return Math.abs(actual - predict(training, method, 1)[0]);
+  const candidates = methods
+    .filter(
+      (method) =>
+        method !== "ridge-regression" || values.length >= RIDGE_MIN_VALUES,
+    )
+    .map((method) => {
+      const errors = values.slice(-14).map((actual, index) => {
+        const training = values.slice(0, values.length - 14 + index);
+        return Math.abs(actual - predict(training, method, 1)[0]);
+      });
+      return { method, errors, mae: mean(errors) };
     });
-    return { method, errors, mae: mean(errors) };
-  });
   candidates.sort((a, b) => a.mae - b.mae);
   const selected = candidates[0];
   const ordered = [...selected.errors].sort((a, b) => a - b);
@@ -103,6 +194,10 @@ export function forecast(
     mae: selected.mae,
     validationPoints: 14,
     trainingPoints: values.length,
+    attribution:
+      selected.method === "ridge-regression"
+        ? (explainRidge(values) ?? undefined)
+        : undefined,
     points: predict(values, selected.method, count).map((value, index) => ({
       date: addDays(last!, index + 1),
       value: Math.max(0, value),

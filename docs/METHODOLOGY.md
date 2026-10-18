@@ -48,3 +48,13 @@ Missing attendance never implies absenteeism. Diagnostic records older than 48 h
 ## Evaluation boundary
 
 Unit and transaction tests establish implementation behavior on fixtures. They do not establish real district forecast accuracy, safety of clinical decisions, route feasibility, production security, regulatory compliance, multi-instance persistence, or deployment. Record actual execution results separately in `VERIFICATION.md`.
+
+## Ridge regression and SHAP
+
+A fourth forecasting candidate is a ridge regression (lambda 1) on three standardized features of the target day: demand on the previous day, demand seven days earlier, and the mean of the previous seven days. It is eligible only with at least 35 consecutive observations (14 validation origins, at least 14 training rows, 7 lag days) and is refitted on past-only data at each validation origin. It is selected only if its MAE is strictly lowest among candidates. Multi-day forecasts feed predictions back recursively.
+
+For a linear model, SHAP values have a closed form: `phi_j = coef_j * (x_j - mean_j)` (independent-feature form), and baseline + sum(phi) equals the first-day forecast exactly (tested). They describe how the model used its inputs, not causes of demand or any clinical effect. Features are correlated, so attribution between them is not unique in a causal sense.
+
+## Resilience score, what-if and timeline
+
+Resilience is the equal-weight mean of four shares over current records: medicine rows rated healthy, facilities under 85% bed occupancy, facilities with at least 80% recorded duty cover, and lab tests operational with reagents. Unknown or unrecorded items are excluded from denominators. The what-if preview recomputes recipient and donor days of cover for a chosen quantity and flags donor safety-stock breaches; it changes nothing. The timeline lists projected shortage dates within 14 days; the act-by date is shortage date minus one day (assumed dispatch/transit).

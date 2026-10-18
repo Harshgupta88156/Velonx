@@ -75,6 +75,7 @@ export type Forecast = {
     | "seasonal-naive"
     | "moving-average"
     | "exponential-smoothing"
+    | "ridge-regression"
     | "insufficient-data";
   points: {
     date: string;
@@ -86,6 +87,13 @@ export type Forecast = {
   validationPoints: number;
   trainingPoints: number;
   intervalLabel: string;
+  /** Present only when the ridge model is selected: exact SHAP values for the first forecast day. */
+  attribution?: Attribution;
+};
+export type Attribution = {
+  baseline: number;
+  prediction: number;
+  contributions: { feature: "lastDay" | "sameWeekdayLastWeek" | "weekMean"; label: string; input: number; shap: number }[];
 };
 export type InventoryInsight = {
   inventoryId: string;

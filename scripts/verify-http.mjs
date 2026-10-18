@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 
 // Runs only against an owned production process and disposable database.
-const directory = await mkdtemp(join(tmpdir(), "velonx-http-"));
+const directory = await mkdtemp(join(tmpdir(), "districtcare-http-"));
 const port = process.env.TEST_PORT || "3107";
 const base = `http://127.0.0.1:${port}`;
 let child;

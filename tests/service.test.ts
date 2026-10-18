@@ -18,7 +18,7 @@ import {
 } from "../src/lib/service";
 import { authorizeRequest, jsonBody, handleError } from "../src/lib/http";
 
-const testDirectory = mkdtempSync(join(tmpdir(), "velonx-service-tests-"));
+const testDirectory = mkdtempSync(join(tmpdir(), "districtcare-service-tests-"));
 const originalPath = process.env.DATABASE_PATH;
 const originalMode = process.env.DEMO_MODE;
 const originalKey = process.env.ADMIN_KEY;

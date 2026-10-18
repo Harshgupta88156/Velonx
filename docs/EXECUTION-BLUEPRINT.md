@@ -1,4 +1,4 @@
-# Velonx: seven-hour execution blueprint
+# DistrictCare: seven-hour execution blueprint
 
 ## 1. Product strategy
 
@@ -50,7 +50,7 @@ Acceptance: predictions respond to underlying history, alerts respond to stock u
 
 ## 6. Product design blueprint
 
-Visual identity: Velonx wordmark and compact medical-inspired V; navy navigation rail, warm off-white canvas, teal/emerald action color, amber for warnings and red for urgent scarcity. Use restrained borders, clear typographic hierarchy, compact evidence cards and readable tables. Status always has text/icon, never color alone. External fonts/maps are optional; core workflow must function without them.
+Visual identity: DistrictCare wordmark and compact medical-inspired V; navy navigation rail, warm off-white canvas, teal/emerald action color, amber for warnings and red for urgent scarcity. Use restrained borders, clear typographic hierarchy, compact evidence cards and readable tables. Status always has text/icon, never color alone. External fonts/maps are optional; core workflow must function without them.
 
 Screens: command centre, facilities, medicines, footfall, beds, doctors, diagnostics, transfers, activity. Shared facility context and role strip prevent duplicated interfaces. Filters and clickable facility rows connect summary to supporting records. Hero dashboard prioritizes urgent interventions, facilities at risk, patient volume, beds, diagnostic availability and a coordinate-based district schematic. Forecast chart separates observed and projected values and explains empirical bands. Recommendation drawer compares before/after coverage, quantity, distance, reserve and assumptions before approval. Transfer screen shows physical state and next responsible facility. Inventory corrections require a reason. Operational forms validate beds and staffing bounds. Show loading, empty, stale, error and success states.
 

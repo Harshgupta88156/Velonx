@@ -61,7 +61,7 @@ export function handleError(error: unknown) {
       { status: 400 },
     );
   console.error(
-    "Velonx request failed",
+    "DistrictCare request failed",
     error instanceof Error ? error.message : "Unknown error",
   );
   return Response.json(

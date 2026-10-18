@@ -96,7 +96,8 @@ test("future observations cannot affect a supplied analysis date", () => {
 });
 
 test("moving average and smoothing can win; MAE uses past-only training", () => {
-  const noisy = history((i) => [8, 12, 9, 11, 10][i % 5]);
+  // 34 days: below the 35-day ridge minimum, so the three baselines compete alone.
+  const noisy = history((i) => [8, 12, 9, 11, 10][i % 5]).slice(-34);
   const moving = forecast(noisy, 7, asOf);
   assert.equal(moving.method, "moving-average");
   const manualErrors = Array.from({ length: 14 }, (_, i) => {
@@ -110,7 +111,7 @@ test("moving average and smoothing can win; MAE uses past-only training", () => 
     Math.abs(moving.mae! - manualErrors.reduce((a, b) => a + b) / 14) < 1e-12,
   );
   const trend = forecast(
-    history((i) => i),
+    history((i) => i).slice(-34),
     7,
     asOf,
   );
@@ -334,4 +335,15 @@ test("risk score exposes bed/load/verified staffing/diagnostic contributors", ()
   assert.equal(risk.level, "critical");
   assert.equal(risk.reasons.length, 5);
   assert.deepEqual(analyze(data), analyze(data));
+});
+
+test("ridge model is eligible from 35 days and its SHAP values sum to prediction minus baseline", () => {
+  assert.notEqual(forecast(history((i) => i).slice(-34), 7, asOf).method, "ridge-regression");
+  const trend = forecast(history((i) => i), 7, asOf);
+  assert.equal(trend.method, "ridge-regression");
+  assert.ok(trend.mae! < 1);
+  const a = trend.attribution!;
+  const total = a.contributions.reduce((acc, c) => acc + c.shap, 0);
+  assert.ok(Math.abs(a.baseline + total - a.prediction) < 1e-9);
+  assert.ok(Math.abs(trend.points[0].value - Math.max(0, a.prediction)) < 1e-9);
 });

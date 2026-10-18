@@ -16,7 +16,7 @@ import type {
 let connection: Database.Database | undefined;
 let connectionPath = "";
 export function getDb(): Database.Database {
-  const path = process.env.DATABASE_PATH || "./data/velonx.db";
+  const path = process.env.DATABASE_PATH || "./data/districtcare.db";
   if (connection && connectionPath === path) return connection;
   connection?.close();
   // Runtime-configured writable location; never trace local state into a build.
